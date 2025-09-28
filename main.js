@@ -1,8 +1,6 @@
 import * as THREE from 'three'
 
 function animate() {
-    cubeMesh.rotateX(0.01)
-    cubeMesh.rotateY(0.01)
     renderer.render(scene, camera);
 }
 
@@ -14,6 +12,35 @@ const camParam = {
     farClip: 1000
 
 }
+
+const CONTROLS = {
+    FORWARD:"ArrowUp",
+    BACKWARD:"ArrowDown",
+    LEFT:"ArrowLeft",
+    RIGHT:"ArrowRight", 
+}
+
+window.addEventListener("keydown", (event) => {
+    console.log(event.key)
+    const STEP = 0.1
+    switch (event.key) {
+        case CONTROLS.FORWARD:
+            cubeMesh.position.z -= STEP
+            break;
+        case CONTROLS.BACKWARD:
+            cubeMesh.position.z += STEP
+            break;
+        case CONTROLS.LEFT:
+            cubeMesh.position.x -= STEP
+            break;
+        case CONTROLS.RIGHT:
+            cubeMesh.position.x += STEP
+            break;
+        default:
+            break;
+    }
+
+});
 const camera = new THREE.PerspectiveCamera(camParam.fiedOfView, camParam.aspectRatio, camParam.nearClip, camParam.farClip)
 
 const renderer = new THREE.WebGLRenderer()
