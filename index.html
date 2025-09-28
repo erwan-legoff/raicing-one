@@ -1,17 +1,28 @@
 <!DOCTYPE html>
 <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport">
-        <meta http-equiv="X-UA-Compatible" content="ie-edge">
-        <title>RAIcing One</title>
-        <link rel="stylesheet" href="./style.css">
-        <link rel="icon" href="./favicon.ico" type="image/x-icon">
-    </head>
-        <body>
-            <main>
-                <h1>Est-ce que vous arriverez au bout du circuit ?</h1>
-            </main>
-            <script> src="script.js"</script>
-        </body>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport">
+    <meta http-equiv="X-UA-Compatible" content="ie-edge">
+    <title>RAIcing One</title>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+    <main>
+        <h1>Est-ce que vous arriverez au bout du circuit ?</h1>
+    </main>
+    <script type="importmap">
+    {
+    "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@v0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@v0.180.0/examples/jsm/"
+    }
+    }
+    </script>
+    <script type="module" src="/main.js"></script>
+</body>
+
 </html>
