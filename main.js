@@ -18,22 +18,27 @@ const CONTROLS = {
     LEFT: "ArrowLeft",
     RIGHT: "ArrowRight",
 }
+window.addEventListener("keydown", function (e) {
+    if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.code) > -1) {
+        e.preventDefault();
+    }
+}, false);
 
 window.addEventListener("keydown", (event) => {
     console.log(event.key)
     const STEP = 0.1
     switch (event.key) {
         case CONTROLS.FORWARD:
-            cubeMesh.position.z -= STEP
+            carMesh.position.z -= STEP
             break;
         case CONTROLS.BACKWARD:
-            cubeMesh.position.z += STEP
+            carMesh.position.z += STEP
             break;
         case CONTROLS.LEFT:
-            cubeMesh.position.x -= STEP
+            carMesh.position.x -= STEP
             break;
         case CONTROLS.RIGHT:
-            cubeMesh.position.x += STEP
+            carMesh.position.x += STEP
             break;
         default:
             break;
@@ -41,6 +46,9 @@ window.addEventListener("keydown", (event) => {
 
 });
 const camera = new THREE.PerspectiveCamera(camParam.fiedOfView, camParam.aspectRatio, camParam.nearClip, camParam.farClip)
+camera.position.z = 5
+camera.position.y = 2
+camera.rotateX(0)
 
 const renderer = new THREE.WebGLRenderer()
 // setting the resolution
@@ -51,15 +59,14 @@ const light = createLight();
 scene.add(light)
 
 
-const cubeMesh = createCubeMesh();
+const carMesh = createCarMesh();
 const ROAD_HEIGHT = 0.1
 const roadMesh = createRoadMesh();
 scene.add(roadMesh)
-scene.add(cubeMesh);
+scene.add(carMesh);
 renderer.setAnimationLoop(animate);
 
-camera.position.z = 5
-camera.position.y = 1
+
 
 function createRoadMesh() {
     const roadGeometry = new THREE.BoxGeometry(2, ROAD_HEIGHT, 200);
@@ -77,9 +84,11 @@ function createLight() {
     return light;
 }
 
-function createCubeMesh() {
-    const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
-    const cubeMaterial = new THREE.MeshPhongMaterial({ color: "#327fa8" });
-    const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterial);
-    return cubeMesh;
+function createCarMesh() {
+    const carHeight = 1
+    const carGeometry = new THREE.BoxGeometry(carHeight, carHeight, carHeight);
+    const carMaterial = new THREE.MeshPhongMaterial({ color: "#327fa8" });
+    const carMesh = new THREE.Mesh(carGeometry, carMaterial);
+    carMesh.position.y = carHeight
+    return carMesh;
 }
