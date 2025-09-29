@@ -10,14 +10,13 @@ const camParam = {
     aspectRatio: window.innerWidth / window.innerHeight,
     nearClip: 0.1,
     farClip: 1000
-
 }
 
 const CONTROLS = {
-    FORWARD:"ArrowUp",
-    BACKWARD:"ArrowDown",
-    LEFT:"ArrowLeft",
-    RIGHT:"ArrowRight", 
+    FORWARD: "ArrowUp",
+    BACKWARD: "ArrowDown",
+    LEFT: "ArrowLeft",
+    RIGHT: "ArrowRight",
 }
 
 window.addEventListener("keydown", (event) => {
@@ -48,11 +47,39 @@ const renderer = new THREE.WebGLRenderer()
 renderer.setSize(window.innerWidth, window.innerHeight)
 document.body.appendChild(renderer.domElement)
 
-const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
-const cubematerialM = new THREE.MeshBasicMaterial({ color: "#327fa8" })
-const cubeMesh = new THREE.Mesh(cubeGeometry, cubematerialM)
-scene.add(cubeMesh)
+const light = createLight();
+scene.add(light)
 
+
+const cubeMesh = createCubeMesh();
+const ROAD_HEIGHT = 0.1
+const roadMesh = createRoadMesh();
+scene.add(roadMesh)
+scene.add(cubeMesh);
 renderer.setAnimationLoop(animate);
 
 camera.position.z = 5
+camera.position.y = 1
+
+function createRoadMesh() {
+    const roadGeometry = new THREE.BoxGeometry(2, ROAD_HEIGHT, 200);
+    const roadMaterial = new THREE.MeshPhongMaterial({ color: "#424242ff" });
+    const roadMesh = new THREE.Mesh(roadGeometry, roadMaterial);
+    roadMesh.position.setY(-ROAD_HEIGHT);
+    return roadMesh;
+}
+
+function createLight() {
+    const lightColor = 0xFFFFFF;
+    const lightIntensity = 3;
+    const light = new THREE.DirectionalLight(lightColor, lightIntensity);
+    light.position.set(-1, 2, 4);
+    return light;
+}
+
+function createCubeMesh() {
+    const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const cubeMaterial = new THREE.MeshPhongMaterial({ color: "#327fa8" });
+    const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterial);
+    return cubeMesh;
+}
