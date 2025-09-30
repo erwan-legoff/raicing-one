@@ -66,10 +66,13 @@ scene.add(roadMesh)
 scene.add(carMesh);
 renderer.setAnimationLoop(animate);
 
+const floorLamp = createFloorLamp()
+scene.add(floorLamp)
+
 
 
 function createRoadMesh() {
-    const roadGeometry = new THREE.BoxGeometry(2, ROAD_HEIGHT, 200);
+    const roadGeometry = new THREE.BoxGeometry(4, ROAD_HEIGHT, 200);
     const roadMaterial = new THREE.MeshPhongMaterial({ color: "#424242ff" });
     const roadMesh = new THREE.Mesh(roadGeometry, roadMaterial);
     roadMesh.position.setY(-ROAD_HEIGHT);
@@ -82,6 +85,26 @@ function createLight() {
     const light = new THREE.DirectionalLight(lightColor, lightIntensity);
     light.position.set(-1, 2, 4);
     return light;
+}
+
+function createFloorLamp(){
+    const lightColor = "#fffbc3ff"
+    const lightIntensity = 1
+    const light = new THREE.DirectionalLight(lightColor,lightIntensity)
+    const lampWidth = 1
+    const lampHeight = 0.3
+    const lampDepth = 1
+    const floorLampMaterial = new THREE.MeshPhongMaterial({reflectivity:1, shininess:75,specular:"#818181ff"})
+    const floorLampGroup = new THREE.Group()
+    const lampGeometry = new THREE.BoxGeometry(lampWidth,lampHeight,lampDepth)
+    const lampMesh = new THREE.Mesh(lampGeometry, floorLampMaterial)
+    const lampPostHeight = 6
+    lampMesh.position.setX(lampWidth)
+    lampMesh.position.setY(lampPostHeight/2)
+    const lampPostGeometry = new THREE.BoxGeometry(lampDepth,lampPostHeight,lampWidth)
+    const lampPostMesh = new THREE.Mesh(lampPostGeometry,floorLampMaterial)
+    floorLampGroup.add(light,lampMesh, lampPostMesh)
+    return floorLampGroup
 }
 
 function createCarMesh() {
