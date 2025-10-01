@@ -8,6 +8,11 @@ function animate() {
     world.fixedStep()
     carMesh.position.copy(carBody.position)
     carMesh.quaternion.copy(carBody.quaternion)
+    if(CONTROLS_PRESSED.includes(CONTROLS.FORWARD)){
+        carBody.velocity.z = -1
+    }else{
+        carBody.velocity.z = 0
+    }
 }
 
 const scene = new THREE.Scene();
@@ -24,6 +29,7 @@ const CONTROLS = {
     LEFT: "ArrowLeft",
     RIGHT: "ArrowRight",
 }
+let CONTROLS_PRESSED = []
 window.addEventListener("keydown", function (e) {
     if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.code) > -1) {
         e.preventDefault();
@@ -31,25 +37,15 @@ window.addEventListener("keydown", function (e) {
 }, false);
 
 window.addEventListener("keydown", (event) => {
-    console.log(event.key)
-    const STEP = 0.1
-    switch (event.key) {
-        case CONTROLS.FORWARD:
-            carMesh.position.z -= STEP
-            break;
-        case CONTROLS.BACKWARD:
-            carMesh.position.z += STEP
-            break;
-        case CONTROLS.LEFT:
-            carMesh.position.x -= STEP
-            break;
-        case CONTROLS.RIGHT:
-            carMesh.position.x += STEP
-            break;
-        default:
-            break;
-    }
+        if(!CONTROLS_PRESSED.includes(event.code)){
+            CONTROLS_PRESSED.push(event.code)
+        }
+});
 
+window.addEventListener("keyup", (event) => {
+        
+    CONTROLS_PRESSED =  CONTROLS_PRESSED.filter((code)=> code !== event.code)
+        
 });
 const camera = new THREE.PerspectiveCamera(camParam.fieldOfView, camParam.aspectRatio, camParam.nearClip, camParam.farClip)
 camera.position.z = 5
