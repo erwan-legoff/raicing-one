@@ -1,12 +1,18 @@
 import * as THREE from 'three'
-
+import * as CANNON from 'cannon'
+const world = new CANNON.World({
+    gravity : new CANNON.Vec3(0, -9.80665, 0)
+})
 function animate() {
     renderer.render(scene, camera);
+    world.fixedStep()
+    carMesh.position.copy(carBody.position)
+    carMesh.quaternion.copy(carBody.quaternion)
 }
 
 const scene = new THREE.Scene();
 const camParam = {
-    fiedOfView: 75,
+    fieldOfView: 75,
     aspectRatio: window.innerWidth / window.innerHeight,
     nearClip: 0.1,
     farClip: 1000
@@ -45,7 +51,7 @@ window.addEventListener("keydown", (event) => {
     }
 
 });
-const camera = new THREE.PerspectiveCamera(camParam.fiedOfView, camParam.aspectRatio, camParam.nearClip, camParam.farClip)
+const camera = new THREE.PerspectiveCamera(camParam.fieldOfView, camParam.aspectRatio, camParam.nearClip, camParam.farClip)
 camera.position.z = 5
 camera.position.y = 2
 camera.rotateX(0)
@@ -59,12 +65,15 @@ const light = createLight();
 scene.add(light)
 
 
-const carMesh = createCarMesh();
+const {carMesh, carBody} = createCarMesh();
 const ROAD_HEIGHT = 0.1
 const ROAD_WIDTH = 4
-const roadMesh = createRoadMesh();
+const ROAD_DEPTH = 200
+const {roadMesh, roadBody} = createRoad();
 scene.add(roadMesh)
 scene.add(carMesh);
+world.addBody(carBody)
+world.addBody(roadBody)
 renderer.setAnimationLoop(animate);
 
 const floorLamp = createFloorLamp()
@@ -73,12 +82,21 @@ scene.add(floorLamp)
 
 
 
-function createRoadMesh() {
-    const roadGeometry = new THREE.BoxGeometry(ROAD_WIDTH, ROAD_HEIGHT, 200);
+function createRoad() {
+    
+    const roadGeometry = new THREE.BoxGeometry(ROAD_WIDTH, ROAD_HEIGHT, ROAD_DEPTH);
     const roadMaterial = new THREE.MeshPhongMaterial({ color: "#424242ff" });
     const roadMesh = new THREE.Mesh(roadGeometry, roadMaterial);
-    roadMesh.position.setY(-ROAD_HEIGHT);
-    return roadMesh;
+    const halfExtents = new CANNON.Vec3(ROAD_WIDTH/2,ROAD_HEIGHT/2,ROAD_DEPTH/2)
+    const roadBody = new CANNON.Body(
+        {
+            type: CANNON.Body.STATIC,
+            shape: new CANNON.Box(halfExtents)
+        }
+    )
+        roadBody.position.set(0,-ROAD_HEIGHT,0);
+
+    return {roadMesh, roadBody};
 }
 
 function createLight() {
@@ -128,6 +146,12 @@ function createCarMesh() {
     const carGeometry = new THREE.BoxGeometry(carHeight, carHeight, carHeight);
     const carMaterial = new THREE.MeshPhongMaterial({ color: "#327fa8" });
     const carMesh = new THREE.Mesh(carGeometry, carMaterial);
-    carMesh.position.y = carHeight / 2
-    return carMesh;
+
+    const halfExtents = new CANNON.Vec3(carHeight/ 2, carHeight /2, carHeight /2 )
+    const carBody = new CANNON.Body({
+        mass:300,
+        shape: new CANNON.Box(halfExtents)
+    })
+    carBody.position.y = carHeight
+    return {carMesh, carBody};
 }
