@@ -122,7 +122,6 @@ function updateCar() {
 }
 
 function createRoad() {
-
     const roadGeometry = new THREE.BoxGeometry(ROAD_WIDTH, ROAD_HEIGHT, ROAD_DEPTH);
     const roadMaterial = new THREE.MeshPhongMaterial({ color: "#424242ff" });
     const roadMesh = new THREE.Mesh(roadGeometry, roadMaterial);
@@ -181,12 +180,14 @@ function createFloorLamp() {
 }
 
 function createCar() {
-    const carHeight = 1
-    const carGeometry = new THREE.BoxGeometry(carHeight, carHeight, carHeight);
+    const carHeight = 0.5
+    const carWidth = 1
+    const carLength = 2
+    const carGeometry = new THREE.BoxGeometry(carLength, carHeight, carWidth);
     const carMaterial = new THREE.MeshPhongMaterial({ color: "#327fa8" });
     const carMesh = new THREE.Mesh(carGeometry, carMaterial);
 
-    const halfExtents = new CANNON.Vec3(carHeight / 2, carHeight / 2, carHeight / 2)
+    const halfExtents = new CANNON.Vec3(carLength / 2, carHeight / 2, carWidth / 2)
     const carBody = new CANNON.Body({
         mass: 120,
         shape: new CANNON.Box(halfExtents)
@@ -194,7 +195,7 @@ function createCar() {
     
     const down = new CANNON.Vec3(0, -1, 0)
     const wheelAxis = new CANNON.Vec3(0, 0, 1)
-    const wheelSize = carHeight / 5
+    const wheelSize = carHeight / 3
     const wheelShape = new CANNON.Sphere(wheelSize)
 
     const vehicle = new CANNON.RigidVehicle({
@@ -206,35 +207,35 @@ function createCar() {
     const wheelMaterial = new THREE.MeshPhongMaterial({color:"#9e9e9e"})
     const wheelMeshes = makeWheelMeshes(wheelGeometry, wheelMaterial)
         
-    addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down);
+    addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down, carLength, carWidth);
     
     carBody.position.y = carHeight * 4
     carBody.quaternion.setFromAxisAngle(down, Math.PI/2)
     return { carMesh, carBody, vehicle, wheelBodies, wheelMeshes };
 }
-function addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down) {
+function addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down, carLength, carWidth) {
     vehicle.addWheel({
         body: wheelBodies[0],
-        position: new CANNON.Vec3(-carHeight / 2, -carHeight / 2, carHeight / 2),
+        position: new CANNON.Vec3(-carLength / 2, -carHeight / 2, carWidth / 2),
         axis: wheelAxis,
         direction: down
     });
     vehicle.addWheel({
         body: wheelBodies[1],
-        position: new CANNON.Vec3(-carHeight / 2, -carHeight / 2, -carHeight / 2),
+        position: new CANNON.Vec3(-carLength / 2, -carHeight / 2, -carWidth / 2),
         axis: wheelAxis,
         direction: down
     });
     vehicle.addWheel({
         body: wheelBodies[2],
-        position: new CANNON.Vec3(carHeight / 2, -carHeight / 2, carHeight / 2),
+        position: new CANNON.Vec3(carLength / 2, -carHeight / 2, carWidth / 2),
         axis: wheelAxis,
         direction: down
     });
 
     vehicle.addWheel({
         body: wheelBodies[3],
-        position: new CANNON.Vec3(carHeight / 2, -carHeight / 2, -carHeight / 2),
+        position: new CANNON.Vec3(carLength / 2, -carHeight / 2, -carWidth / 2),
         axis: wheelAxis,
         direction: down
     });
