@@ -10,7 +10,7 @@ const cannonDebugger = new CannonDebugger(scene, world)
 function animate() {
     renderer.render(scene, camera);
     world.fixedStep()
-    cannonDebugger.update()
+    // cannonDebugger.update()
     syncMeshesAndBodies();
     updateCar();
 }
@@ -58,13 +58,21 @@ const light = createLight();
 scene.add(light)
 
 
-const { carMesh, carBody, vehicle } = createCar();
-const ROAD_HEIGHT = 0.1
+const { carMesh, carBody, vehicle, wheelBodies, wheelMeshes } = createCar();
+const ROAD_HEIGHT = 1
 const ROAD_WIDTH = 4
 const ROAD_DEPTH = 200
 const { roadMesh, roadBody } = createRoad();
+const roadMat = new CANNON.Material('road')
+roadBody.material = roadMat
+world.addContactMaterial(new CANNON.ContactMaterial(
+  roadMat, 
+  wheelBodies[0].material, 
+  { friction: 1.0, restitution: 0 }
+))
 scene.add(roadMesh)
 scene.add(carMesh);
+scene.add(...wheelMeshes)
 // roadBody.quaternion.setFromEuler(-Math.PI, 0, Math.PI/25)
 world.addBody(roadBody)
 vehicle.addToWorld(world)
@@ -79,7 +87,12 @@ scene.add(floorLamp)
 function syncMeshesAndBodies() {
     carMesh.position.copy(carBody.position);
     carMesh.quaternion.copy(carBody.quaternion);
+    roadMesh.position.copy(roadBody.position);
     roadMesh.quaternion.copy(roadBody.quaternion);
+    wheelMeshes.forEach((mesh,i)=>{
+        mesh.position.copy(wheelBodies[i].position);
+        mesh.quaternion.copy(wheelBodies[i].quaternion)
+    })
 }
 
 function updateCar() {
@@ -181,42 +194,52 @@ function createCar() {
     
     const down = new CANNON.Vec3(0, -1, 0)
     const wheelAxis = new CANNON.Vec3(0, 0, 1)
-    
-    const wheelShape = new CANNON.Sphere(carHeight / 5)
+    const wheelSize = carHeight / 5
+    const wheelShape = new CANNON.Sphere(wheelSize)
 
     const vehicle = new CANNON.RigidVehicle({
         mass: 150,
         chassisBody: carBody,
     })
+    const wheelBodies = makeWheelBodies(wheelShape)
+    const wheelGeometry = new THREE.SphereGeometry(wheelSize)
+    const wheelMaterial = new THREE.MeshPhongMaterial({color:"#9e9e9e"})
+    const wheelMeshes = makeWheelMeshes(wheelGeometry, wheelMaterial)
+        
+    addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down);
+    
+    carBody.position.y = carHeight * 4
+    carBody.quaternion.setFromAxisAngle(down, Math.PI/2)
+    return { carMesh, carBody, vehicle, wheelBodies, wheelMeshes };
+}
+function addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down) {
     vehicle.addWheel({
-        body: getWheelBody(wheelShape),
+        body: wheelBodies[0],
         position: new CANNON.Vec3(-carHeight / 2, -carHeight / 2, carHeight / 2),
         axis: wheelAxis,
         direction: down
-    })
+    });
     vehicle.addWheel({
-        body: getWheelBody(wheelShape),
+        body: wheelBodies[1],
         position: new CANNON.Vec3(-carHeight / 2, -carHeight / 2, -carHeight / 2),
         axis: wheelAxis,
         direction: down
-    })
+    });
     vehicle.addWheel({
-        body: getWheelBody(wheelShape),
+        body: wheelBodies[2],
         position: new CANNON.Vec3(carHeight / 2, -carHeight / 2, carHeight / 2),
         axis: wheelAxis,
         direction: down
-    })
-    
+    });
+
     vehicle.addWheel({
-        body: getWheelBody(wheelShape),
+        body: wheelBodies[3],
         position: new CANNON.Vec3(carHeight / 2, -carHeight / 2, -carHeight / 2),
         axis: wheelAxis,
         direction: down
-    })
-    carBody.position.y = carHeight * 4
-    carBody.quaternion.setFromAxisAngle(down, Math.PI/2)
-    return { carMesh, carBody, vehicle };
+    });
 }
+
 function getWheelBody(wheelShape) {
     const wheelPysicsMaterial = new CANNON.Material('wheel')
     return new CANNON.Body({
@@ -225,5 +248,14 @@ function getWheelBody(wheelShape) {
         mass:1,
         angularDamping: 0.4
     });
+}
+function makeWheelBodies(shape, count = 4) {
+  return Array.from({ length: count }, () => getWheelBody(shape))
+}
+function makeWheelMeshes(geometry, material, count = 4) {
+  return Array.from({ length: count }, () => getWheelMesh(geometry, material))
+}
+function getWheelMesh(geometry, material){
+    return new THREE.Mesh(geometry,material)
 }
 
