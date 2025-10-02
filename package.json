@@ -21,6 +21,7 @@
   "homepage": "https://github.com/erwan-legoff/raicing-one#readme",
   "dependencies": {
     "cannon-es": "^0.20.0",
+    "cannon-es-debugger": "^1.0.0",
     "three": "^0.180.0"
   },
   "devDependencies": {

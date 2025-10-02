@@ -1,11 +1,16 @@
 import * as THREE from 'three'
 import * as CANNON from 'cannon-es'
+import CannonDebugger from 'cannon-es-debugger';
+
 const world = new CANNON.World({
     gravity: new CANNON.Vec3(0, -9.80665, 0)
 })
+const scene = new THREE.Scene();
+const cannonDebugger = new CannonDebugger(scene, world)
 function animate() {
     renderer.render(scene, camera);
     world.fixedStep()
+    cannonDebugger.update()
     carMesh.position.copy(carBody.position)
     carMesh.quaternion.copy(carBody.quaternion)
     const ENGINE_FORCE = 2000;
@@ -13,8 +18,12 @@ function animate() {
         // force vers l'avant en repère LOCAL (-Z = avant par convention 3D)
         carBody.applyForce(new CANNON.Vec3(0, 0, -ENGINE_FORCE), new CANNON.Vec3(0, 0, 0));
     }
+    if (CONTROLS_PRESSED.includes(CONTROLS.BACKWARD)) {
+        // force vers l'avant en repère LOCAL (-Z = avant par convention 3D)
+        vehicle.applyForce(new CANNON.Vec3(0, 0, ENGINE_FORCE / 0.5), new CANNON.Vec3(0, 0, 0));
+    }
 }
-const scene = new THREE.Scene();
+
 const camParam = {
     fieldOfView: 75,
     aspectRatio: window.innerWidth / window.innerHeight,
