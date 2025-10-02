@@ -98,7 +98,7 @@ function syncMeshesAndBodies() {
 
 function updateCar() {
     const ENGINE_FORCE = 40;
-    const STEERING_ANGLE = Math.PI / 4;
+    const STEERING_ANGLE = Math.PI / 16;
     if (CONTROLS_PRESSED.includes(CONTROLS.FORWARD)) {
         vehicle.setWheelForce(ENGINE_FORCE, 0);
         vehicle.setWheelForce(ENGINE_FORCE, 1);
