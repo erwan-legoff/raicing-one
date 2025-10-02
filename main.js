@@ -90,6 +90,8 @@ function syncMeshesAndBodies() {
     carMesh.quaternion.copy(carBody.quaternion);
     roadMesh.position.copy(roadBody.position);
     roadMesh.quaternion.copy(roadBody.quaternion);
+    camera.position.z = carMesh.position.z + 5
+
     wheelMeshes.forEach((mesh,i)=>{
         mesh.position.copy(wheelBodies[i].position);
         mesh.quaternion.copy(wheelBodies[i].quaternion)
