@@ -57,19 +57,20 @@ document.body.appendChild(renderer.domElement)
 const light = createLight();
 scene.add(light)
 
-
+const wheelPhysicsMaterial = new CANNON.Material('wheel')
 const { carMesh, carBody, vehicle, wheelBodies, wheelMeshes } = createCar();
 const ROAD_HEIGHT = 1
 const ROAD_WIDTH = 4
 const ROAD_DEPTH = 200
 const { roadMesh, roadBody } = createRoad();
 const roadMat = new CANNON.Material('road')
+
 roadBody.material = roadMat
-world.addContactMaterial(new CANNON.ContactMaterial(
-  roadMat, 
-  wheelBodies[0].material, 
-  { friction: 1.0, restitution: 0 }
-))
+world.addContactMaterial(new CANNON.ContactMaterial(roadMat, wheelPhysicsMaterial
+, {
+  friction: 1.0,
+  restitution: 0,
+}))
 scene.add(roadMesh)
 scene.add(carMesh);
 scene.add(...wheelMeshes)
@@ -96,7 +97,7 @@ function syncMeshesAndBodies() {
 }
 
 function updateCar() {
-    const ENGINE_FORCE = 20;
+    const ENGINE_FORCE = 40;
     const STEERING_ANGLE = Math.PI / 4;
     if (CONTROLS_PRESSED.includes(CONTROLS.FORWARD)) {
         vehicle.setWheelForce(ENGINE_FORCE, 0);
@@ -242,10 +243,10 @@ function addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down, carL
 }
 
 function getWheelBody(wheelShape) {
-    const wheelPysicsMaterial = new CANNON.Material('wheel')
+   
     return new CANNON.Body({
         shape: wheelShape,
-        material: wheelPysicsMaterial,
+        material: wheelPhysicsMaterial,
         mass:1,
         angularDamping: 0.4
     });
