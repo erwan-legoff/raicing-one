@@ -16,7 +16,7 @@ function animate() {
     const ENGINE_FORCE = 2000;
     if (CONTROLS_PRESSED.includes(CONTROLS.FORWARD)) {
         // force vers l'avant en repère LOCAL (-Z = avant par convention 3D)
-        carBody.applyForce(new CANNON.Vec3(0, 0, -ENGINE_FORCE), new CANNON.Vec3(0, 0, 0));
+        vehicle.applyForce(new CANNON.Vec3(0, 0, -ENGINE_FORCE), new CANNON.Vec3(0, 0, 0));
     }
     if (CONTROLS_PRESSED.includes(CONTROLS.BACKWARD)) {
         // force vers l'avant en repère LOCAL (-Z = avant par convention 3D)
@@ -69,15 +69,16 @@ const light = createLight();
 scene.add(light)
 
 
-const { carMesh, carBody } = createCarMesh();
+const { carMesh, carBody, vehicle } = createCar();
 const ROAD_HEIGHT = 0.1
 const ROAD_WIDTH = 4
 const ROAD_DEPTH = 200
 const { roadMesh, roadBody } = createRoad();
 scene.add(roadMesh)
 scene.add(carMesh);
-world.addBody(carBody)
+// world.addBody(carBody)
 world.addBody(roadBody)
+vehicle.addToWorld(world)
 renderer.setAnimationLoop(animate);
 
 const floorLamp = createFloorLamp()
@@ -145,7 +146,7 @@ function createFloorLamp() {
     return floorLampGroup
 }
 
-function createCarMesh() {
+function createCar() {
     const carHeight = 1
     const carGeometry = new THREE.BoxGeometry(carHeight, carHeight, carHeight);
     const carMaterial = new THREE.MeshPhongMaterial({ color: "#327fa8" });
@@ -153,9 +154,45 @@ function createCarMesh() {
 
     const halfExtents = new CANNON.Vec3(carHeight / 2, carHeight / 2, carHeight / 2)
     const carBody = new CANNON.Body({
-        mass:300,
+        mass: 1,
         shape: new CANNON.Box(halfExtents)
     })
-    carBody.position.y = carHeight
-    return { carMesh, carBody };
+    const wheelAxisWidth = 5
+    const angularDamping = 0.4
+    const wheelPysicsMaterial = new CANNON.Material('wheel')
+    const down = new CANNON.Vec3(0, -1, 0)
+    const wheelAxis = new CANNON.Vec3(0, 0, 1)
+    const wheelBody = new CANNON.Body({
+        shape: new CANNON.Sphere(carHeight / 10)
+    })
+
+    const vehicle = new CANNON.RigidVehicle({
+        chassisBody: carBody,
+    })
+    vehicle.addWheel({
+        body: wheelBody,
+        position: new CANNON.Vec3(-2, 0, carHeight / 2),
+        axis: wheelAxis,
+        direction: down
+    })
+    vehicle.addWheel({
+        body: wheelBody,
+        position: new CANNON.Vec3(2, 0, carHeight / 2),
+        axis: wheelAxis,
+        direction: down
+    })
+    vehicle.addWheel({
+        body: wheelBody,
+        position: new CANNON.Vec3(-2, 0, -carHeight / 2),
+        axis: wheelAxis,
+        direction: down
+    })
+    vehicle.addWheel({
+        body: wheelBody,
+        position: new CANNON.Vec3(2, 0, -carHeight / 2),
+        axis: wheelAxis,
+        direction: down
+    })
+    carBody.position.y = carHeight * 4
+    return { carMesh, carBody, vehicle };
 }
