@@ -14,14 +14,29 @@ function animate() {
     carMesh.position.copy(carBody.position)
     carMesh.quaternion.copy(carBody.quaternion)
     roadMesh.quaternion.copy(roadBody.quaternion)
-    const ENGINE_FORCE = 2000;
+    const ENGINE_FORCE = 20;
+    const STEERING_ANGLE = Math.PI / 4
     if (CONTROLS_PRESSED.includes(CONTROLS.FORWARD)) {
-        // force vers l'avant en repère LOCAL (-Z = avant par convention 3D)
-        vehicle.applyForce(new CANNON.Vec3(0, 0, -ENGINE_FORCE), new CANNON.Vec3(0, 0, 0));
+        
+        vehicle.setWheelForce(ENGINE_FORCE, 0);
+        vehicle.setWheelForce(ENGINE_FORCE, 1);
+    }else if (CONTROLS_PRESSED.includes(CONTROLS.BACKWARD)) {
+        vehicle.setWheelForce(- ENGINE_FORCE / 2,0); 
+        vehicle.setWheelForce(- ENGINE_FORCE / 2,1);    
+    }else{
+        vehicle.setWheelForce(0,0); 
+        vehicle.setWheelForce(0,1); 
     }
-    if (CONTROLS_PRESSED.includes(CONTROLS.BACKWARD)) {
-        // force vers l'avant en repère LOCAL (-Z = avant par convention 3D)
-        vehicle.applyForce(new CANNON.Vec3(0, 0, ENGINE_FORCE / 0.5), new CANNON.Vec3(0, 0, 0));
+
+    if(CONTROLS_PRESSED.includes(CONTROLS.LEFT)){
+        vehicle.setSteeringValue(STEERING_ANGLE,0)
+        vehicle.setSteeringValue(STEERING_ANGLE,1)
+    }else if(CONTROLS_PRESSED.includes(CONTROLS.RIGHT)){
+        vehicle.setSteeringValue(-STEERING_ANGLE,0)
+        vehicle.setSteeringValue(-STEERING_ANGLE,1)
+    }else{
+        vehicle.setSteeringValue(0,0)
+        vehicle.setSteeringValue(0,1)
     }
 }
 
@@ -46,14 +61,19 @@ window.addEventListener("keydown", function (e) {
 }, false);
 
 window.addEventListener("keydown", (event) => {
+    console.log("keydown")
     if (!CONTROLS_PRESSED.includes(event.code)) {
         CONTROLS_PRESSED.push(event.code)
     }
+    console.log(event.code)
+    console.log(CONTROLS_PRESSED)
 });
 
 window.addEventListener("keyup", (event) => {
-
-    CONTROLS_PRESSED = CONTROLS_PRESSED.filter((code) => code !== event.code)
+    CONTROLS_PRESSED = CONTROLS_PRESSED.filter((code) => code != event.code)
+    console.log("keyup")
+    console.log(event.code)
+    console.log(CONTROLS_PRESSED)
 
 });
 const camera = new THREE.PerspectiveCamera(camParam.fieldOfView, camParam.aspectRatio, camParam.nearClip, camParam.farClip)
@@ -77,7 +97,7 @@ const ROAD_DEPTH = 200
 const { roadMesh, roadBody } = createRoad();
 scene.add(roadMesh)
 scene.add(carMesh);
-roadBody.quaternion.setFromEuler(-Math.PI, 0, Math.PI/25)
+// roadBody.quaternion.setFromEuler(-Math.PI, 0, Math.PI/25)
 world.addBody(roadBody)
 vehicle.addToWorld(world)
 renderer.setAnimationLoop(animate);
@@ -179,16 +199,17 @@ function createCar() {
     })
     vehicle.addWheel({
         body: getWheelBody(wheelShape),
-        position: new CANNON.Vec3(carHeight / 2, -carHeight / 2, carHeight / 2),
+        position: new CANNON.Vec3(-carHeight / 2, -carHeight / 2, -carHeight / 2),
         axis: wheelAxis,
         direction: down
     })
     vehicle.addWheel({
         body: getWheelBody(wheelShape),
-        position: new CANNON.Vec3(-carHeight / 2, -carHeight / 2, -carHeight / 2),
+        position: new CANNON.Vec3(carHeight / 2, -carHeight / 2, carHeight / 2),
         axis: wheelAxis,
         direction: down
     })
+    
     vehicle.addWheel({
         body: getWheelBody(wheelShape),
         position: new CANNON.Vec3(carHeight / 2, -carHeight / 2, -carHeight / 2),
@@ -196,6 +217,7 @@ function createCar() {
         direction: down
     })
     carBody.position.y = carHeight * 4
+    carBody.quaternion.setFromAxisAngle(down, Math.PI/2)
     return { carMesh, carBody, vehicle };
 }
 function getWheelBody(wheelShape) {
