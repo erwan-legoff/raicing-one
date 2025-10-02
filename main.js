@@ -61,19 +61,15 @@ window.addEventListener("keydown", function (e) {
 }, false);
 
 window.addEventListener("keydown", (event) => {
-    console.log("keydown")
     if (!CONTROLS_PRESSED.includes(event.code)) {
         CONTROLS_PRESSED.push(event.code)
     }
-    console.log(event.code)
-    console.log(CONTROLS_PRESSED)
 });
 
 window.addEventListener("keyup", (event) => {
     CONTROLS_PRESSED = CONTROLS_PRESSED.filter((code) => code != event.code)
-    console.log("keyup")
-    console.log(event.code)
-    console.log(CONTROLS_PRESSED)
+
+
 
 });
 const camera = new THREE.PerspectiveCamera(camParam.fieldOfView, camParam.aspectRatio, camParam.nearClip, camParam.farClip)
