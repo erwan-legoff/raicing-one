@@ -13,6 +13,7 @@ function animate() {
     cannonDebugger.update()
     carMesh.position.copy(carBody.position)
     carMesh.quaternion.copy(carBody.quaternion)
+    roadMesh.quaternion.copy(roadBody.quaternion)
     const ENGINE_FORCE = 2000;
     if (CONTROLS_PRESSED.includes(CONTROLS.FORWARD)) {
         // force vers l'avant en repère LOCAL (-Z = avant par convention 3D)
@@ -76,7 +77,7 @@ const ROAD_DEPTH = 200
 const { roadMesh, roadBody } = createRoad();
 scene.add(roadMesh)
 scene.add(carMesh);
-// world.addBody(carBody)
+roadBody.quaternion.setFromEuler(-Math.PI, 0, Math.PI/25)
 world.addBody(roadBody)
 vehicle.addToWorld(world)
 renderer.setAnimationLoop(animate);
@@ -154,45 +155,56 @@ function createCar() {
 
     const halfExtents = new CANNON.Vec3(carHeight / 2, carHeight / 2, carHeight / 2)
     const carBody = new CANNON.Body({
-        mass: 1,
+        mass: 120,
         shape: new CANNON.Box(halfExtents)
     })
     const wheelAxisWidth = 5
     const angularDamping = 0.4
-    const wheelPysicsMaterial = new CANNON.Material('wheel')
+    
     const down = new CANNON.Vec3(0, -1, 0)
     const wheelAxis = new CANNON.Vec3(0, 0, 1)
-    const wheelBody = new CANNON.Body({
-        shape: new CANNON.Sphere(carHeight / 10)
-    })
+    
+    const wheelShape = new CANNON.Sphere(carHeight / 5)
+    const wheelBody = getWheelBody(wheelShape)
 
     const vehicle = new CANNON.RigidVehicle({
+        mass: 150,
         chassisBody: carBody,
     })
     vehicle.addWheel({
-        body: wheelBody,
-        position: new CANNON.Vec3(-2, 0, carHeight / 2),
+        body: getWheelBody(wheelShape),
+        position: new CANNON.Vec3(-carHeight / 2, -carHeight / 2, carHeight / 2),
         axis: wheelAxis,
         direction: down
     })
     vehicle.addWheel({
-        body: wheelBody,
-        position: new CANNON.Vec3(2, 0, carHeight / 2),
+        body: getWheelBody(wheelShape),
+        position: new CANNON.Vec3(carHeight / 2, -carHeight / 2, carHeight / 2),
         axis: wheelAxis,
         direction: down
     })
     vehicle.addWheel({
-        body: wheelBody,
-        position: new CANNON.Vec3(-2, 0, -carHeight / 2),
+        body: getWheelBody(wheelShape),
+        position: new CANNON.Vec3(-carHeight / 2, -carHeight / 2, -carHeight / 2),
         axis: wheelAxis,
         direction: down
     })
     vehicle.addWheel({
-        body: wheelBody,
-        position: new CANNON.Vec3(2, 0, -carHeight / 2),
+        body: getWheelBody(wheelShape),
+        position: new CANNON.Vec3(carHeight / 2, -carHeight / 2, -carHeight / 2),
         axis: wheelAxis,
         direction: down
     })
     carBody.position.y = carHeight * 4
     return { carMesh, carBody, vehicle };
 }
+function getWheelBody(wheelShape) {
+    const wheelPysicsMaterial = new CANNON.Material('wheel')
+    return new CANNON.Body({
+        shape: wheelShape,
+        material: wheelPysicsMaterial,
+        mass:1,
+        angularDamping: 0.4
+    });
+}
+
