@@ -1,20 +1,19 @@
 import * as THREE from 'three'
 import * as CANNON from 'cannon-es'
 const world = new CANNON.World({
-    gravity : new CANNON.Vec3(0, -9.80665, 0)
+    gravity: new CANNON.Vec3(0, -9.80665, 0)
 })
 function animate() {
     renderer.render(scene, camera);
     world.fixedStep()
     carMesh.position.copy(carBody.position)
     carMesh.quaternion.copy(carBody.quaternion)
-    if(CONTROLS_PRESSED.includes(CONTROLS.FORWARD)){
-        carBody.velocity.z = -1
-    }else{
-        carBody.velocity.z = 0
+    const ENGINE_FORCE = 2000;
+    if (CONTROLS_PRESSED.includes(CONTROLS.FORWARD)) {
+        // force vers l'avant en repère LOCAL (-Z = avant par convention 3D)
+        carBody.applyForce(new CANNON.Vec3(0, 0, -ENGINE_FORCE), new CANNON.Vec3(0, 0, 0));
     }
 }
-
 const scene = new THREE.Scene();
 const camParam = {
     fieldOfView: 75,
@@ -37,15 +36,15 @@ window.addEventListener("keydown", function (e) {
 }, false);
 
 window.addEventListener("keydown", (event) => {
-        if(!CONTROLS_PRESSED.includes(event.code)){
-            CONTROLS_PRESSED.push(event.code)
-        }
+    if (!CONTROLS_PRESSED.includes(event.code)) {
+        CONTROLS_PRESSED.push(event.code)
+    }
 });
 
 window.addEventListener("keyup", (event) => {
-        
-    CONTROLS_PRESSED =  CONTROLS_PRESSED.filter((code)=> code !== event.code)
-        
+
+    CONTROLS_PRESSED = CONTROLS_PRESSED.filter((code) => code !== event.code)
+
 });
 const camera = new THREE.PerspectiveCamera(camParam.fieldOfView, camParam.aspectRatio, camParam.nearClip, camParam.farClip)
 camera.position.z = 5
@@ -61,11 +60,11 @@ const light = createLight();
 scene.add(light)
 
 
-const {carMesh, carBody} = createCarMesh();
+const { carMesh, carBody } = createCarMesh();
 const ROAD_HEIGHT = 0.1
 const ROAD_WIDTH = 4
 const ROAD_DEPTH = 200
-const {roadMesh, roadBody} = createRoad();
+const { roadMesh, roadBody } = createRoad();
 scene.add(roadMesh)
 scene.add(carMesh);
 world.addBody(carBody)
@@ -79,20 +78,20 @@ scene.add(floorLamp)
 
 
 function createRoad() {
-    
+
     const roadGeometry = new THREE.BoxGeometry(ROAD_WIDTH, ROAD_HEIGHT, ROAD_DEPTH);
     const roadMaterial = new THREE.MeshPhongMaterial({ color: "#424242ff" });
     const roadMesh = new THREE.Mesh(roadGeometry, roadMaterial);
-    const halfExtents = new CANNON.Vec3(ROAD_WIDTH/2,ROAD_HEIGHT/2,ROAD_DEPTH/2)
+    const halfExtents = new CANNON.Vec3(ROAD_WIDTH / 2, ROAD_HEIGHT / 2, ROAD_DEPTH / 2)
     const roadBody = new CANNON.Body(
         {
             type: CANNON.Body.STATIC,
             shape: new CANNON.Box(halfExtents)
         }
     )
-        roadBody.position.set(0,-ROAD_HEIGHT,0);
+    roadBody.position.set(0, -ROAD_HEIGHT, 0);
 
-    return {roadMesh, roadBody};
+    return { roadMesh, roadBody };
 }
 
 function createLight() {
@@ -143,11 +142,11 @@ function createCarMesh() {
     const carMaterial = new THREE.MeshPhongMaterial({ color: "#327fa8" });
     const carMesh = new THREE.Mesh(carGeometry, carMaterial);
 
-    const halfExtents = new CANNON.Vec3(carHeight/ 2, carHeight /2, carHeight /2 )
+    const halfExtents = new CANNON.Vec3(carHeight / 2, carHeight / 2, carHeight / 2)
     const carBody = new CANNON.Body({
         mass:300,
         shape: new CANNON.Box(halfExtents)
     })
     carBody.position.y = carHeight
-    return {carMesh, carBody};
+    return { carMesh, carBody };
 }
