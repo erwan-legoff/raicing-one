@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import * as CANNON from 'cannon'
+import * as CANNON from 'cannon-es'
 const world = new CANNON.World({
     gravity : new CANNON.Vec3(0, -9.80665, 0)
 })
