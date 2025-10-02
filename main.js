@@ -11,33 +11,8 @@ function animate() {
     renderer.render(scene, camera);
     world.fixedStep()
     cannonDebugger.update()
-    carMesh.position.copy(carBody.position)
-    carMesh.quaternion.copy(carBody.quaternion)
-    roadMesh.quaternion.copy(roadBody.quaternion)
-    const ENGINE_FORCE = 20;
-    const STEERING_ANGLE = Math.PI / 4
-    if (CONTROLS_PRESSED.includes(CONTROLS.FORWARD)) {
-        
-        vehicle.setWheelForce(ENGINE_FORCE, 0);
-        vehicle.setWheelForce(ENGINE_FORCE, 1);
-    }else if (CONTROLS_PRESSED.includes(CONTROLS.BACKWARD)) {
-        vehicle.setWheelForce(- ENGINE_FORCE / 2,0); 
-        vehicle.setWheelForce(- ENGINE_FORCE / 2,1);    
-    }else{
-        vehicle.setWheelForce(0,0); 
-        vehicle.setWheelForce(0,1); 
-    }
-
-    if(CONTROLS_PRESSED.includes(CONTROLS.LEFT)){
-        vehicle.setSteeringValue(STEERING_ANGLE,0)
-        vehicle.setSteeringValue(STEERING_ANGLE,1)
-    }else if(CONTROLS_PRESSED.includes(CONTROLS.RIGHT)){
-        vehicle.setSteeringValue(-STEERING_ANGLE,0)
-        vehicle.setSteeringValue(-STEERING_ANGLE,1)
-    }else{
-        vehicle.setSteeringValue(0,0)
-        vehicle.setSteeringValue(0,1)
-    }
+    syncMeshesAndBodies();
+    updateCar();
 }
 
 const camParam = {
@@ -68,9 +43,6 @@ window.addEventListener("keydown", (event) => {
 
 window.addEventListener("keyup", (event) => {
     CONTROLS_PRESSED = CONTROLS_PRESSED.filter((code) => code != event.code)
-
-
-
 });
 const camera = new THREE.PerspectiveCamera(camParam.fieldOfView, camParam.aspectRatio, camParam.nearClip, camParam.farClip)
 camera.position.z = 5
@@ -103,6 +75,38 @@ floorLamp.position.setX(-ROAD_WIDTH / 2)
 scene.add(floorLamp)
 
 
+
+function syncMeshesAndBodies() {
+    carMesh.position.copy(carBody.position);
+    carMesh.quaternion.copy(carBody.quaternion);
+    roadMesh.quaternion.copy(roadBody.quaternion);
+}
+
+function updateCar() {
+    const ENGINE_FORCE = 20;
+    const STEERING_ANGLE = Math.PI / 4;
+    if (CONTROLS_PRESSED.includes(CONTROLS.FORWARD)) {
+        vehicle.setWheelForce(ENGINE_FORCE, 0);
+        vehicle.setWheelForce(ENGINE_FORCE, 1);
+    } else if (CONTROLS_PRESSED.includes(CONTROLS.BACKWARD)) {
+        vehicle.setWheelForce(-ENGINE_FORCE / 2, 0);
+        vehicle.setWheelForce(-ENGINE_FORCE / 2, 1);
+    } else {
+        vehicle.setWheelForce(0, 0);
+        vehicle.setWheelForce(0, 1);
+    }
+
+    if (CONTROLS_PRESSED.includes(CONTROLS.LEFT)) {
+        vehicle.setSteeringValue(STEERING_ANGLE, 0);
+        vehicle.setSteeringValue(STEERING_ANGLE, 1);
+    } else if (CONTROLS_PRESSED.includes(CONTROLS.RIGHT)) {
+        vehicle.setSteeringValue(-STEERING_ANGLE, 0);
+        vehicle.setSteeringValue(-STEERING_ANGLE, 1);
+    } else {
+        vehicle.setSteeringValue(0, 0);
+        vehicle.setSteeringValue(0, 1);
+    }
+}
 
 function createRoad() {
 
@@ -174,14 +178,11 @@ function createCar() {
         mass: 120,
         shape: new CANNON.Box(halfExtents)
     })
-    const wheelAxisWidth = 5
-    const angularDamping = 0.4
     
     const down = new CANNON.Vec3(0, -1, 0)
     const wheelAxis = new CANNON.Vec3(0, 0, 1)
     
     const wheelShape = new CANNON.Sphere(carHeight / 5)
-    const wheelBody = getWheelBody(wheelShape)
 
     const vehicle = new CANNON.RigidVehicle({
         mass: 150,
