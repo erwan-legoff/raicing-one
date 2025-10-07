@@ -7,3 +7,4 @@ A game demo to train an AI to drive in a 3D environment
 - A road
 - A street light
 - A camera following the car
+- Renderer dynamically resizing
