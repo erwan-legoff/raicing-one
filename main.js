@@ -15,7 +15,7 @@ function animate() {
     updateCar();
 }
 
-const camParam = {
+const CAM_PARAM = {
     fieldOfView: 75,
     aspectRatio: window.innerWidth / window.innerHeight,
     nearClip: 0.1,
@@ -44,7 +44,15 @@ window.addEventListener("keydown", (event) => {
 window.addEventListener("keyup", (event) => {
     CONTROLS_PRESSED = CONTROLS_PRESSED.filter((code) => code != event.code)
 });
-const camera = new THREE.PerspectiveCamera(camParam.fieldOfView, camParam.aspectRatio, camParam.nearClip, camParam.farClip)
+
+
+const camera = new THREE.PerspectiveCamera(CAM_PARAM.fieldOfView, CAM_PARAM.aspectRatio, CAM_PARAM.nearClip, CAM_PARAM.farClip)
+window.addEventListener('resize', (_) => {
+    camera.aspect = window.innerWidth / window.innerHeight
+    renderer.setSize(window.innerWidth, window.innerHeight)
+    camera.updateProjectionMatrix()
+});
+
 camera.position.z = 5
 camera.position.y = 2
 camera.rotateX(0)
@@ -67,10 +75,10 @@ const roadMat = new CANNON.Material('road')
 
 roadBody.material = roadMat
 world.addContactMaterial(new CANNON.ContactMaterial(roadMat, wheelPhysicsMaterial
-, {
-  friction: 1.0,
-  restitution: 0,
-}))
+    , {
+        friction: 1.0,
+        restitution: 0,
+    }))
 scene.add(roadMesh)
 scene.add(carMesh);
 scene.add(...wheelMeshes)
@@ -92,7 +100,7 @@ function syncMeshesAndBodies() {
     roadMesh.quaternion.copy(roadBody.quaternion);
     camera.position.z = carMesh.position.z + 5
 
-    wheelMeshes.forEach((mesh,i)=>{
+    wheelMeshes.forEach((mesh, i) => {
         mesh.position.copy(wheelBodies[i].position);
         mesh.quaternion.copy(wheelBodies[i].quaternion)
     })
@@ -195,7 +203,7 @@ function createCar() {
         mass: 120,
         shape: new CANNON.Box(halfExtents)
     })
-    
+
     const down = new CANNON.Vec3(0, -1, 0)
     const wheelAxis = new CANNON.Vec3(0, 0, 1)
     const wheelSize = carHeight / 3
@@ -207,13 +215,13 @@ function createCar() {
     })
     const wheelBodies = makeWheelBodies(wheelShape)
     const wheelGeometry = new THREE.SphereGeometry(wheelSize)
-    const wheelMaterial = new THREE.MeshPhongMaterial({color:"#9e9e9e"})
+    const wheelMaterial = new THREE.MeshPhongMaterial({ color: "#9e9e9e" })
     const wheelMeshes = makeWheelMeshes(wheelGeometry, wheelMaterial)
-        
+
     addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down, carLength, carWidth);
-    
+
     carBody.position.y = carHeight * 4
-    carBody.quaternion.setFromAxisAngle(down, Math.PI/2)
+    carBody.quaternion.setFromAxisAngle(down, Math.PI / 2)
     return { carMesh, carBody, vehicle, wheelBodies, wheelMeshes };
 }
 function addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down, carLength, carWidth) {
@@ -245,21 +253,21 @@ function addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down, carL
 }
 
 function getWheelBody(wheelShape) {
-   
+
     return new CANNON.Body({
         shape: wheelShape,
         material: wheelPhysicsMaterial,
-        mass:1,
+        mass: 1,
         angularDamping: 0.4
     });
 }
 function makeWheelBodies(shape, count = 4) {
-  return Array.from({ length: count }, () => getWheelBody(shape))
+    return Array.from({ length: count }, () => getWheelBody(shape))
 }
 function makeWheelMeshes(geometry, material, count = 4) {
-  return Array.from({ length: count }, () => getWheelMesh(geometry, material))
+    return Array.from({ length: count }, () => getWheelMesh(geometry, material))
 }
-function getWheelMesh(geometry, material){
-    return new THREE.Mesh(geometry,material)
+function getWheelMesh(geometry, material) {
+    return new THREE.Mesh(geometry, material)
 }
 
