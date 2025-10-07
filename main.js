@@ -15,6 +15,10 @@ function animate() {
     updateCar();
 }
 
+const carHeight = 0.5
+const carWidth = 1
+const carLength = 2
+
 const CAM_PARAM = {
     fieldOfView: 75,
     aspectRatio: window.innerWidth / window.innerHeight,
@@ -68,8 +72,8 @@ scene.add(light)
 const wheelPhysicsMaterial = new CANNON.Material('wheel')
 const { carMesh, carBody, vehicle, wheelBodies, wheelMeshes } = createCar();
 const ROAD_HEIGHT = 1
-const ROAD_WIDTH = 4
-const ROAD_DEPTH = 200
+const ROAD_WIDTH = 5
+const ROAD_DEPTH = 1000
 const { roadMesh, roadBody } = createRoad();
 const roadMat = new CANNON.Material('road')
 
@@ -92,6 +96,21 @@ floorLamp.position.setX(-ROAD_WIDTH / 2)
 scene.add(floorLamp)
 
 
+const rayOrigin = carMesh.position.clone(); // point de départ du rayon
+rayOrigin.setX(rayOrigin.x + carLength)
+const rayFrontDirection = new THREE.Vector3(-1, 0, 0);
+
+rayFrontDirection.applyQuaternion(carMesh.quaternion)
+
+const raycaster = new THREE.Raycaster(rayOrigin, rayFrontDirection);
+
+// Pour visualiser le rayon dans la scène
+const length = 5;
+const arrowHelper = new THREE.ArrowHelper(rayFrontDirection, rayOrigin, length, 0xff0000);
+scene.add(arrowHelper);
+
+
+
 
 function syncMeshesAndBodies() {
     carMesh.position.copy(carBody.position);
@@ -104,6 +123,13 @@ function syncMeshesAndBodies() {
         mesh.position.copy(wheelBodies[i].position);
         mesh.quaternion.copy(wheelBodies[i].quaternion)
     })
+    const rayFrontDirection = new THREE.Vector3(-1, 0, 0); // vers l'avant
+    rayFrontDirection.applyQuaternion(carMesh.quaternion).normalize();
+    // On avance de la moitié de la voiture dans la direction de la voiture
+    const rayOrigin = carMesh.position.clone().add(rayFrontDirection.clone().multiplyScalar(carLength / 2));
+    raycaster.set(rayOrigin, rayFrontDirection)
+    arrowHelper.position.copy(rayOrigin);
+    arrowHelper.setDirection(rayFrontDirection);
 }
 
 function updateCar() {
@@ -191,9 +217,8 @@ function createFloorLamp() {
 }
 
 function createCar() {
-    const carHeight = 0.5
-    const carWidth = 1
-    const carLength = 2
+    const down = new CANNON.Vec3(0, -1, 0)
+
     const carGeometry = new THREE.BoxGeometry(carLength, carHeight, carWidth);
     const carMaterial = new THREE.MeshPhongMaterial({ color: "#327fa8" });
     const carMesh = new THREE.Mesh(carGeometry, carMaterial);
@@ -203,8 +228,10 @@ function createCar() {
         mass: 120,
         shape: new CANNON.Box(halfExtents)
     })
+    carBody.position.y = carHeight * 4
 
-    const down = new CANNON.Vec3(0, -1, 0)
+
+
     const wheelAxis = new CANNON.Vec3(0, 0, 1)
     const wheelSize = carHeight / 3
     const wheelShape = new CANNON.Sphere(wheelSize)
@@ -218,10 +245,10 @@ function createCar() {
     const wheelMaterial = new THREE.MeshPhongMaterial({ color: "#9e9e9e" })
     const wheelMeshes = makeWheelMeshes(wheelGeometry, wheelMaterial)
 
-    addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down, carLength, carWidth);
 
-    carBody.position.y = carHeight * 4
+    addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down, carLength, carWidth);
     carBody.quaternion.setFromAxisAngle(down, Math.PI / 2)
+
     return { carMesh, carBody, vehicle, wheelBodies, wheelMeshes };
 }
 function addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down, carLength, carWidth) {
