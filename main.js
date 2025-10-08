@@ -7,12 +7,22 @@ const world = new CANNON.World({
 })
 const scene = new THREE.Scene();
 const cannonDebugger = new CannonDebugger(scene, world)
+let first = true
 function animate() {
     renderer.render(scene, camera);
     world.fixedStep()
     // cannonDebugger.update()
     syncMeshesAndBodies();
     updateCar();
+
+    const intersects = rays.frontRay.raycaster.intersectObjects(scene.children, true);
+
+    if (intersects.length > 0) {
+        // Affiche ce que le rayon touche
+        console.log("distance", intersects[0].distance);
+        first = false
+    }
+
 }
 
 const carHeight = 0.5
@@ -96,18 +106,31 @@ floorLamp.position.setX(-ROAD_WIDTH / 2)
 scene.add(floorLamp)
 
 
-const rayOrigin = carMesh.position.clone(); // point de départ du rayon
-rayOrigin.setX(rayOrigin.x + carLength)
-const rayFrontDirection = new THREE.Vector3(-1, 0, 0);
+function createRayCaster(rayOrigin, rayFrontDirection, carMesh, length = 5, color = 0xff0000) {
+    // Applique la rotation du carMesh au vecteur direction
+    const direction = rayFrontDirection.clone().applyQuaternion(carMesh.quaternion).normalize();
+    // Calcule le point d'origine du rayon dans le repère du carMesh
+    const origin = rayOrigin.clone();
+    // Crée le raycaster
+    const raycaster = new THREE.Raycaster(origin, direction);
+    // Crée l'arrowHelper pour visualiser le rayon
+    const arrowHelper = new THREE.ArrowHelper(direction, origin, length, color);
+    arrowHelper.traverse(obj => {
+        obj.raycast = () => { };
+    });
+    return { arrowHelper, raycaster };
+}
 
-rayFrontDirection.applyQuaternion(carMesh.quaternion)
+// Exemple d'utilisation :
+function createRayCasters(carMesh, carLength) {
+    const rayFrontOrigin = carMesh.position.clone().add(new THREE.Vector3(carLength / 2, 0, 0));
+    const rayFrontDirection = new THREE.Vector3(-1, 0, 0);
+    const frontRay = createRayCaster(rayFrontOrigin, rayFrontDirection, carMesh);
+    return { frontRay }
+}
 
-const raycaster = new THREE.Raycaster(rayOrigin, rayFrontDirection);
-
-// Pour visualiser le rayon dans la scène
-const length = 5;
-const arrowHelper = new THREE.ArrowHelper(rayFrontDirection, rayOrigin, length, 0xff0000);
-scene.add(arrowHelper);
+const rays = createRayCasters(carMesh, carLength);
+scene.add(rays.frontRay.arrowHelper);
 
 
 
@@ -126,10 +149,10 @@ function syncMeshesAndBodies() {
     const rayFrontDirection = new THREE.Vector3(-1, 0, 0); // vers l'avant
     rayFrontDirection.applyQuaternion(carMesh.quaternion).normalize();
     // On avance de la moitié de la voiture dans la direction de la voiture
-    const rayOrigin = carMesh.position.clone().add(rayFrontDirection.clone().multiplyScalar(carLength / 2));
-    raycaster.set(rayOrigin, rayFrontDirection)
-    arrowHelper.position.copy(rayOrigin);
-    arrowHelper.setDirection(rayFrontDirection);
+    const rayFrontOrigin = carMesh.position.clone().add(rayFrontDirection.clone().multiplyScalar(carLength / 2));
+    rays.frontRay.raycaster.set(rayFrontOrigin, rayFrontDirection)
+    rays.frontRay.arrowHelper.position.copy(rayFrontOrigin);
+    rays.frontRay.arrowHelper.setDirection(rayFrontDirection);
 }
 
 function updateCar() {
