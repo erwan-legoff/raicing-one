@@ -181,7 +181,6 @@ function syncMeshesAndBodies() {
     })
 
     Object.values(rays).forEach(ray => ray.update(carMesh))
-    rays.frontRay.update(carMesh)
 }
 
 function updateCar() {
