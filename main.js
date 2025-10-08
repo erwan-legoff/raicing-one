@@ -106,41 +106,66 @@ floorLamp.position.setX(-ROAD_WIDTH / 2)
 scene.add(floorLamp)
 
 
-function createRayCaster(rayOrigin, rayFrontDirection, length = 5, color = 0xff0000) {
-    // Applique la rotation du carMesh au vecteur direction
-    const direction = rayFrontDirection.clone().applyQuaternion(carMesh.quaternion).normalize();
-    // Calcule le point d'origine du rayon dans le repère du carMesh
-    const origin = rayOrigin.clone();
-    // Crée le raycaster
-    const raycaster = new THREE.Raycaster(origin, direction);
-    // Crée l'arrowHelper pour visualiser le rayon
-    const arrowHelper = new THREE.ArrowHelper(direction, origin, length, color);
-    arrowHelper.traverse(obj => {
-        obj.raycast = () => { };
-    });
+function createRay(localDirection, localOffset = new THREE.Vector3(), length = 5, color = 0xff0000) {
+    const raycaster = new THREE.Raycaster();
+    const arrowHelper = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), length, color);
+    arrowHelper.traverse(obj => { obj.raycast = () => { }; });
 
     const update = (mesh) => {
-        const newDir = rayFrontDirection.clone().applyQuaternion(mesh.quaternion).normalize();
-        const newOrigin = mesh.position.clone().add(newDir.clone().multiplyScalar(carLength / 2));
-        raycaster.set(newOrigin, newDir);
-        arrowHelper.position.copy(newOrigin);
-        arrowHelper.setDirection(newDir);
+        const worldDirection = localDirection.clone().applyQuaternion(mesh.quaternion).normalize();
+        const worldOrigin = mesh.position.clone().add(localOffset.clone().applyQuaternion(mesh.quaternion));
+
+        raycaster.set(worldOrigin, worldDirection);
+        arrowHelper.position.copy(worldOrigin);
+        arrowHelper.setDirection(worldDirection);
     };
-    return { arrowHelper, raycaster, update };
+
+    return { raycaster, arrowHelper, update };
 }
 
-// Exemple d'utilisation :
+
 function createRayCasters() {
-    const rayFrontOrigin = carMesh.position.clone().add(new THREE.Vector3(carLength / 2, 0, 0));
     const rayFrontDirection = new THREE.Vector3(-1, 0, 0);
-    const frontRay = createRayCaster(rayFrontOrigin, rayFrontDirection);
-    return { frontRay }
+    const rayFrontOffset = new THREE.Vector3(-carLength / 2, 0, 0);
+
+    const { rayNarrow: leftNarrowRay, ray45: left45Ray, ray22: left22Ray } = createSideRays(rayFrontDirection);
+    const { rayNarrow: rightNarrowRay, ray45: right45Ray, ray22: right22Ray } = createSideRays(rayFrontDirection, true);
+
+    const frontRay = createRay(rayFrontDirection, rayFrontOffset);
+
+    return { frontRay, left45Ray, leftNarrowRay, left22Ray, right45Ray, rightNarrowRay, right22Ray };
 }
 
 const rays = createRayCasters();
-scene.add(rays.frontRay.arrowHelper);
+
+Object.values(rays).forEach(ray => {
+    scene.add(ray.arrowHelper);
+});
 
 
+
+
+function createSideRays(rayFrontDirection, isRight = false) {
+    const rotation = isRight ? -1 : 1
+    const xOffset = -carLength / 2
+    const zOffset = rotation * (carWidth / 2)
+    const degToRad = Math.PI / 180;
+
+    const rayNarrowDirection = rayFrontDirection.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation * 8 * degToRad);
+    const rayNarrowOffset = new THREE.Vector3(xOffset, 0, zOffset);
+    const rayNarrow = createRay(rayNarrowDirection, rayNarrowOffset);
+
+    const ray45Direction = rayFrontDirection.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation * 45 * degToRad);
+    const ray45Offset = new THREE.Vector3(xOffset, 0, zOffset);
+    const ray45 = createRay(ray45Direction, ray45Offset);
+
+    const ray22Direction = rayFrontDirection.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation * 25 * degToRad);
+    const ray22Offset = new THREE.Vector3(xOffset, 0, zOffset);
+    const ray22 = createRay(ray22Direction, ray22Offset);
+
+
+    return { rayNarrow, ray45, ray22 };
+}
 
 
 function syncMeshesAndBodies() {
@@ -154,6 +179,8 @@ function syncMeshesAndBodies() {
         mesh.position.copy(wheelBodies[i].position);
         mesh.quaternion.copy(wheelBodies[i].quaternion)
     })
+
+    Object.values(rays).forEach(ray => ray.update(carMesh))
     rays.frontRay.update(carMesh)
 }
 
