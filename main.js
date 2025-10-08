@@ -107,7 +107,7 @@ const { carMesh, carBody, vehicle, wheelBodies, wheelMeshes } = createCar();
 const ROAD_HEIGHT = 1
 const ROAD_WIDTH = 5
 const ROAD_DEPTH = 1000
-const { roadMesh, roadBody } = createRoad();
+const { roadMesh, roadBody, leftWallMesh, rightWallMesh } = createRoad();
 const roadMat = new CANNON.Material('road')
 
 roadBody.material = roadMat
@@ -118,6 +118,8 @@ world.addContactMaterial(new CANNON.ContactMaterial(roadMat, wheelPhysicsMateria
     }))
 scene.add(roadMesh)
 scene.add(carMesh);
+scene.add(leftWallMesh)
+scene.add(rightWallMesh)
 scene.add(...wheelMeshes)
 // roadBody.quaternion.setFromEuler(-Math.PI, 0, Math.PI/25)
 world.addBody(roadBody)
@@ -237,15 +239,16 @@ function createRoad() {
     const roadMaterial = new THREE.MeshPhongMaterial({ color: "#424242ff" });
     const roadMesh = new THREE.Mesh(roadGeometry, roadMaterial);
     const halfExtents = new CANNON.Vec3(ROAD_WIDTH / 2, ROAD_HEIGHT / 2, ROAD_DEPTH / 2)
-    const roadBody = new CANNON.Body(
-        {
-            type: CANNON.Body.STATIC,
-            shape: new CANNON.Box(halfExtents)
-        }
-    )
+    const roadBody = new CANNON.Body({type: CANNON.Body.STATIC, shape: new CANNON.Box(halfExtents)}) 
     roadBody.position.set(0, -ROAD_HEIGHT, 0);
+    const leftWallMesh = new THREE.Mesh(roadGeometry, roadMaterial);
+    leftWallMesh.position.setX(-ROAD_WIDTH/2)
+    leftWallMesh.quaternion.setFromAxisAngle(new THREE.Vector3(0,0,1), Math.PI / 2)
+    const rightWallMesh = new THREE.Mesh(roadGeometry, roadMaterial);
+    rightWallMesh.position.setX(ROAD_WIDTH/2)
+    rightWallMesh.quaternion.setFromAxisAngle(new THREE.Vector3(0,0,1), -Math.PI / 2)
 
-    return { roadMesh, roadBody };
+    return { roadMesh, roadBody, leftWallMesh, rightWallMesh };
 }
 
 function createLight() {
