@@ -5,23 +5,46 @@ import CannonDebugger from 'cannon-es-debugger';
 const world = new CANNON.World({
     gravity: new CANNON.Vec3(0, -9.80665, 0)
 })
+const socket = new WebSocket("ws://localhost:8000/ai");
+socket.onopen = () => {
+    console.log("Connecté !");
+};
+
+socket.onmessage = (event) => {
+    console.log("Message reçu :", event.data);
+};
+
+socket.onclose = () => {
+    console.log("Connexion fermée");
+};
+
 const scene = new THREE.Scene();
 const cannonDebugger = new CannonDebugger(scene, world)
 let first = true
-function animate() {
+const SEND_HZ = 1;
+let lastSend = 0
+function animate(ts) {
+
     renderer.render(scene, camera);
     world.fixedStep()
     // cannonDebugger.update()
     syncMeshesAndBodies();
     updateCar();
+    if (ts - lastSend < 1000 / SEND_HZ) return;
+    if (socket.readyState !== WebSocket.OPEN) return;
+    // Gather intersections for all rays into an object keyed by ray name
+    const rayIntersections = Object.fromEntries(Object.entries(rays).map(([name, ray]) => {
+        // intersectObjects returns an array of Intersection objects
 
-    const intersects = rays.frontRay.raycaster.intersectObjects(scene.children, true);
+        const intersects = ray.raycaster.intersectObjects(scene.children, true)
+        if (!intersects) return [name, 10000]
+        if (!intersects.length) return [name, 10000]
+        return [name, intersects[0].distance];
+    }));
 
-    if (intersects.length > 0) {
-        // Affiche ce que le rayon touche
-        console.log("distance", intersects[0].distance);
-        first = false
-    }
+    socket.send(JSON.stringify(rayIntersections))
+    lastSend = ts;
+
 
 }
 
