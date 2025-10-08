@@ -106,7 +106,7 @@ floorLamp.position.setX(-ROAD_WIDTH / 2)
 scene.add(floorLamp)
 
 
-function createRayCaster(rayOrigin, rayFrontDirection, carMesh, length = 5, color = 0xff0000) {
+function createRayCaster(rayOrigin, rayFrontDirection, length = 5, color = 0xff0000) {
     // Applique la rotation du carMesh au vecteur direction
     const direction = rayFrontDirection.clone().applyQuaternion(carMesh.quaternion).normalize();
     // Calcule le point d'origine du rayon dans le repère du carMesh
@@ -118,18 +118,26 @@ function createRayCaster(rayOrigin, rayFrontDirection, carMesh, length = 5, colo
     arrowHelper.traverse(obj => {
         obj.raycast = () => { };
     });
-    return { arrowHelper, raycaster };
+
+    const update = (mesh) => {
+        const newDir = rayFrontDirection.clone().applyQuaternion(mesh.quaternion).normalize();
+        const newOrigin = mesh.position.clone().add(newDir.clone().multiplyScalar(carLength / 2));
+        raycaster.set(newOrigin, newDir);
+        arrowHelper.position.copy(newOrigin);
+        arrowHelper.setDirection(newDir);
+    };
+    return { arrowHelper, raycaster, update };
 }
 
 // Exemple d'utilisation :
-function createRayCasters(carMesh, carLength) {
+function createRayCasters() {
     const rayFrontOrigin = carMesh.position.clone().add(new THREE.Vector3(carLength / 2, 0, 0));
     const rayFrontDirection = new THREE.Vector3(-1, 0, 0);
-    const frontRay = createRayCaster(rayFrontOrigin, rayFrontDirection, carMesh);
+    const frontRay = createRayCaster(rayFrontOrigin, rayFrontDirection);
     return { frontRay }
 }
 
-const rays = createRayCasters(carMesh, carLength);
+const rays = createRayCasters();
 scene.add(rays.frontRay.arrowHelper);
 
 
@@ -146,13 +154,7 @@ function syncMeshesAndBodies() {
         mesh.position.copy(wheelBodies[i].position);
         mesh.quaternion.copy(wheelBodies[i].quaternion)
     })
-    const rayFrontDirection = new THREE.Vector3(-1, 0, 0); // vers l'avant
-    rayFrontDirection.applyQuaternion(carMesh.quaternion).normalize();
-    // On avance de la moitié de la voiture dans la direction de la voiture
-    const rayFrontOrigin = carMesh.position.clone().add(rayFrontDirection.clone().multiplyScalar(carLength / 2));
-    rays.frontRay.raycaster.set(rayFrontOrigin, rayFrontDirection)
-    rays.frontRay.arrowHelper.position.copy(rayFrontOrigin);
-    rays.frontRay.arrowHelper.setDirection(rayFrontDirection);
+    rays.frontRay.update(carMesh)
 }
 
 function updateCar() {
