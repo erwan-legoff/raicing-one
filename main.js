@@ -155,6 +155,7 @@ socket.onmessage = (event) => {
 };
 
 // --- LOOP ---
+let speeds = { x: 0, y: 0, z: 0 }
 function animate(ts) {
     renderer.render(scene, camera);
     world.fixedStep()
@@ -171,8 +172,19 @@ function animate(ts) {
         if (!intersects || !intersects.length) return [name, 10000]
         return [name, intersects[0].distance];
     }));
-    socket.send(JSON.stringify(rayIntersections))
+    const oldSpeeds = { ...speeds }
+    speeds = carBody.velocity
+    const xAcceleration = (speeds.x - oldSpeeds.x) / ts
+    const yAcceleration = (speeds.y - oldSpeeds.y) / ts
+    const zAcceleration = (speeds.z - oldSpeeds.z) / ts
+    const accelerations = { x: xAcceleration, y: yAcceleration, z: zAcceleration }
+    const aiWorld = { sensors: rayIntersections, speeds, accelerations, positions: { car: carMesh.position, road: roadMesh.position } }
+    socket.send(JSON.stringify(aiWorld))
     lastSend = ts;
+    if (carMesh.position.y < (roadMesh.position.y - carHeight)) {
+        resetLevel()
+    }
+
 }
 
 renderer.setAnimationLoop(animate);
@@ -255,7 +267,7 @@ function syncMeshesAndBodies() {
 function updateGame() {
     const ENGINE_FORCE = 40;
     const STEERING_ANGLE = Math.PI / 16;
-    if(CONTROLS_PRESSED.includes(CONTROLS.RESET)){
+    if (CONTROLS_PRESSED.includes(CONTROLS.RESET)) {
         resetLevel()
     }
 
@@ -293,11 +305,11 @@ function createRoad() {
 
     const leftWallMesh = new THREE.Mesh(roadGeometry, roadMaterial);
     leftWallMesh.position.setX(-ROAD_WIDTH / 2)
-    leftWallMesh.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2)
+    leftWallMesh.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.PI / 2)
 
     const rightWallMesh = new THREE.Mesh(roadGeometry, roadMaterial);
     rightWallMesh.position.setX(ROAD_WIDTH / 2)
-    rightWallMesh.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.PI / 2)
+    rightWallMesh.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2)
 
     return { roadMesh, roadBody, leftWallMesh, rightWallMesh };
 }
@@ -342,6 +354,7 @@ function createCar() {
     const carGeometry = new THREE.BoxGeometry(carLength, carHeight, carWidth);
     const carMaterial = new THREE.MeshPhongMaterial({ color: "#327fa8" });
     const carMesh = new THREE.Mesh(carGeometry, carMaterial);
+
 
     const halfExtents = new CANNON.Vec3(carLength / 2, carHeight / 2, carWidth / 2)
     const carBody = new CANNON.Body({
