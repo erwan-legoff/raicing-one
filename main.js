@@ -141,6 +141,11 @@ renderer.setAnimationLoop(animate);
 const floorLamp = createFloorLamp()
 floorLamp.position.setX(-ROAD_WIDTH / 2)
 scene.add(floorLamp)
+const rays = createRayCasters();
+
+Object.values(rays).forEach(ray => {
+    scene.add(ray.arrowHelper);
+});
 
 
 function createRay(localDirection, localOffset = new THREE.Vector3(), length = 5, color = 0xff0000) {
@@ -181,11 +186,6 @@ function createRayCasters() {
     };
 }
 
-const rays = createRayCasters();
-
-Object.values(rays).forEach(ray => {
-    scene.add(ray.arrowHelper);
-});
 
 
 
