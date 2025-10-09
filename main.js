@@ -15,12 +15,14 @@ const CONTROLS = {
     BACKWARD: "ArrowDown",
     LEFT: "ArrowLeft",
     RIGHT: "ArrowRight",
+    RESET: "KeyR"
 }
 const AI_CONTROLS = {
     LEFT: CONTROLS.LEFT,
     FORWARD: CONTROLS.FORWARD,
     RIGHT: CONTROLS.RIGHT,
     BACKWARD: CONTROLS.BACKWARD,
+    RESET: CONTROLS.RESET
 };
 
 let CONTROLS_PRESSED = []
@@ -37,7 +39,6 @@ window.addEventListener("keyup", (event) => {
 const scene = new THREE.Scene();
 const cannonDebugger = new CannonDebugger(scene, world)
 
-let first = true
 const SEND_HZ = 1;
 let lastSend = 0
 
@@ -74,7 +75,7 @@ const ROAD_HEIGHT = 1
 const ROAD_WIDTH = 5
 const ROAD_DEPTH = 1000
 
-// --- OBJETS QUI CHANGENT AU RESET (passent en let) ---
+// --- OBJETS QUI CHANGENT AU RESET ---
 let wheelPhysicsMaterial
 let carMesh, carBody, vehicle, wheelBodies, wheelMeshes
 let roadMesh, roadBody, leftWallMesh, rightWallMesh
@@ -141,13 +142,9 @@ function resetLevel() {
 
     // relancer
     initLevel()
-    // on peut aussi purger les contrôles
-    // CONTROLS_PRESSED = []
+
 }
 
-window.addEventListener("keydown", (e) => {
-    if (e.code === "KeyR") resetLevel();
-});
 
 // --- SOCKET ---
 socket.onmessage = (event) => {
@@ -164,7 +161,7 @@ function animate(ts) {
     // cannonDebugger.update()
 
     syncMeshesAndBodies();
-    updateCar();
+    updateGame();
 
     if (ts - lastSend < 1000 / SEND_HZ) return;
     if (socket.readyState !== WebSocket.OPEN) return;
@@ -255,9 +252,13 @@ function syncMeshesAndBodies() {
     Object.values(rays).forEach(ray => ray.update(carMesh))
 }
 
-function updateCar() {
+function updateGame() {
     const ENGINE_FORCE = 40;
     const STEERING_ANGLE = Math.PI / 16;
+    if(CONTROLS_PRESSED.includes(CONTROLS.RESET)){
+        resetLevel()
+    }
+
     if (CONTROLS_PRESSED.includes(CONTROLS.FORWARD)) {
         vehicle.setWheelForce(ENGINE_FORCE, 0);
         vehicle.setWheelForce(ENGINE_FORCE, 1);
