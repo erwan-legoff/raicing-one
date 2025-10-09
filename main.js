@@ -5,10 +5,11 @@ import CannonDebugger from 'cannon-es-debugger';
 const world = new CANNON.World({
     gravity: new CANNON.Vec3(0, -9.80665, 0)
 })
+
 const socket = new WebSocket("ws://localhost:8000/ai");
-socket.onopen = () => {
-    console.log("Connecté !");
-};
+socket.onopen = () => { console.log("Connecté !"); };
+socket.onclose = () => { console.log("Connexion fermée"); };
+
 const CONTROLS = {
     FORWARD: "ArrowUp",
     BACKWARD: "ArrowDown",
@@ -21,48 +22,24 @@ const AI_CONTROLS = {
     RIGHT: CONTROLS.RIGHT,
     BACKWARD: CONTROLS.BACKWARD,
 };
-socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    if (data.driving_inputs) {
-        CONTROLS_PRESSED = data.driving_inputs.map((aiInput) => {
-            return AI_CONTROLS[aiInput]
-        })
-    }
-};
 
-socket.onclose = () => {
-    console.log("Connexion fermée");
-};
+let CONTROLS_PRESSED = []
+window.addEventListener("keydown", function (e) {
+    if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
+}, false);
+window.addEventListener("keydown", (event) => {
+    if (!CONTROLS_PRESSED.includes(event.code)) CONTROLS_PRESSED.push(event.code)
+});
+window.addEventListener("keyup", (event) => {
+    CONTROLS_PRESSED = CONTROLS_PRESSED.filter((code) => code != event.code)
+});
 
 const scene = new THREE.Scene();
 const cannonDebugger = new CannonDebugger(scene, world)
+
 let first = true
 const SEND_HZ = 1;
 let lastSend = 0
-function animate(ts) {
-
-    renderer.render(scene, camera);
-    world.fixedStep()
-    // cannonDebugger.update()
-    syncMeshesAndBodies();
-    updateCar();
-    if (ts - lastSend < 1000 / SEND_HZ) return;
-    if (socket.readyState !== WebSocket.OPEN) return;
-    // Gather intersections for all rays into an object keyed by ray name
-    const rayIntersections = Object.fromEntries(Object.entries(rays).map(([name, ray]) => {
-        // intersectObjects returns an array of Intersection objects
-
-        const intersects = ray.raycaster.intersectObjects(scene.children, true)
-        if (!intersects) return [name, 10000]
-        if (!intersects.length) return [name, 10000]
-        return [name, intersects[0].distance];
-    }));
-
-    socket.send(JSON.stringify(rayIntersections))
-    lastSend = ts;
-
-
-}
 
 const carHeight = 0.5
 const carWidth = 1
@@ -75,33 +52,12 @@ const CAM_PARAM = {
     farClip: 1000
 }
 
-
-
-let CONTROLS_PRESSED = []
-window.addEventListener("keydown", function (e) {
-    if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.code) > -1) {
-        e.preventDefault();
-    }
-}, false);
-
-window.addEventListener("keydown", (event) => {
-    if (!CONTROLS_PRESSED.includes(event.code)) {
-        CONTROLS_PRESSED.push(event.code)
-    }
-});
-
-window.addEventListener("keyup", (event) => {
-    CONTROLS_PRESSED = CONTROLS_PRESSED.filter((code) => code != event.code)
-});
-
-
 const camera = new THREE.PerspectiveCamera(CAM_PARAM.fieldOfView, CAM_PARAM.aspectRatio, CAM_PARAM.nearClip, CAM_PARAM.farClip)
 window.addEventListener('resize', (_) => {
     camera.aspect = window.innerWidth / window.innerHeight
     renderer.setSize(window.innerWidth, window.innerHeight)
     camera.updateProjectionMatrix()
 });
-
 camera.position.z = 5
 camera.position.y = 2
 camera.rotateX(0)
@@ -114,40 +70,117 @@ document.body.appendChild(renderer.domElement)
 const light = createLight();
 scene.add(light)
 
-const wheelPhysicsMaterial = new CANNON.Material('wheel')
-const { carMesh, carBody, vehicle, wheelBodies, wheelMeshes } = createCar();
 const ROAD_HEIGHT = 1
 const ROAD_WIDTH = 5
 const ROAD_DEPTH = 1000
-const { roadMesh, roadBody, leftWallMesh, rightWallMesh } = createRoad();
-const roadMat = new CANNON.Material('road')
 
-roadBody.material = roadMat
-world.addContactMaterial(new CANNON.ContactMaterial(roadMat, wheelPhysicsMaterial
-    , {
+// --- OBJETS QUI CHANGENT AU RESET (passent en let) ---
+let wheelPhysicsMaterial
+let carMesh, carBody, vehicle, wheelBodies, wheelMeshes
+let roadMesh, roadBody, leftWallMesh, rightWallMesh
+let floorLamp
+let rays
+
+// --- INIT + RESET ---
+function initLevel() {
+    // route
+    ({ roadMesh, roadBody, leftWallMesh, rightWallMesh } = createRoad());
+    const roadMat = new CANNON.Material('road')
+    roadBody.material = roadMat
+    scene.add(roadMesh)
+    scene.add(leftWallMesh)
+    scene.add(rightWallMesh)
+    world.addBody(roadBody)
+
+    // voiture
+    wheelPhysicsMaterial = new CANNON.Material('wheel')
+        ; ({ carMesh, carBody, vehicle, wheelBodies, wheelMeshes } = createCar());
+    scene.add(carMesh)
+    scene.add(...wheelMeshes)
+    vehicle.addToWorld(world)
+
+    // contact
+    world.addContactMaterial(new CANNON.ContactMaterial(roadMat, wheelPhysicsMaterial, {
         friction: 1.0,
         restitution: 0,
     }))
-scene.add(roadMesh)
-scene.add(carMesh);
-scene.add(leftWallMesh)
-scene.add(rightWallMesh)
-scene.add(...wheelMeshes)
-// roadBody.quaternion.setFromEuler(-Math.PI, 0, Math.PI/25)
-world.addBody(roadBody)
-vehicle.addToWorld(world)
-renderer.setAnimationLoop(animate);
 
-const floorLamp = createFloorLamp()
-floorLamp.position.setX(-ROAD_WIDTH / 2)
-scene.add(floorLamp)
-const rays = createRayCasters();
+    // lampadaire
+    floorLamp = createFloorLamp()
+    floorLamp.position.setX(-ROAD_WIDTH / 2)
+    scene.add(floorLamp)
 
-Object.values(rays).forEach(ray => {
-    scene.add(ray.arrowHelper);
+    // rays
+    rays = createRayCasters();
+    Object.values(rays).forEach(ray => scene.add(ray.arrowHelper));
+}
+
+function resetLevel() {
+    // retirer du monde physique
+    try { vehicle?.removeFromWorld?.(world) } catch { }
+    try { carBody && world.removeBody(carBody) } catch { }
+    try { roadBody && world.removeBody(roadBody) } catch { }
+    try { wheelBodies?.forEach(b => world.removeBody(b)) } catch { }
+
+    // retirer de la scène
+    if (carMesh) scene.remove(carMesh)
+    if (wheelMeshes) wheelMeshes.forEach(m => scene.remove(m))
+    if (roadMesh) scene.remove(roadMesh)
+    if (leftWallMesh) scene.remove(leftWallMesh)
+    if (rightWallMesh) scene.remove(rightWallMesh)
+    if (rays) Object.values(rays).forEach(r => scene.remove(r.arrowHelper))
+    if (floorLamp) scene.remove(floorLamp)
+
+    // réinitialiser références
+    wheelPhysicsMaterial = undefined
+    carMesh = carBody = vehicle = undefined
+    wheelBodies = wheelMeshes = undefined
+    roadMesh = roadBody = leftWallMesh = rightWallMesh = undefined
+    rays = undefined
+    floorLamp = undefined
+
+    // relancer
+    initLevel()
+    // on peut aussi purger les contrôles
+    // CONTROLS_PRESSED = []
+}
+
+window.addEventListener("keydown", (e) => {
+    if (e.code === "KeyR") resetLevel();
 });
 
+// --- SOCKET ---
+socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.driving_inputs) {
+        CONTROLS_PRESSED = data.driving_inputs.map((aiInput) => AI_CONTROLS[aiInput])
+    }
+};
 
+// --- LOOP ---
+function animate(ts) {
+    renderer.render(scene, camera);
+    world.fixedStep()
+    // cannonDebugger.update()
+
+    syncMeshesAndBodies();
+    updateCar();
+
+    if (ts - lastSend < 1000 / SEND_HZ) return;
+    if (socket.readyState !== WebSocket.OPEN) return;
+
+    const rayIntersections = Object.fromEntries(Object.entries(rays).map(([name, ray]) => {
+        const intersects = ray.raycaster.intersectObjects(scene.children, true)
+        if (!intersects || !intersects.length) return [name, 10000]
+        return [name, intersects[0].distance];
+    }));
+    socket.send(JSON.stringify(rayIntersections))
+    lastSend = ts;
+}
+
+renderer.setAnimationLoop(animate);
+
+// --- RAYS (inchangé) ---
 function createRay(localDirection, localOffset = new THREE.Vector3(), length = 5, color = 0xff0000) {
     const raycaster = new THREE.Raycaster();
     const arrowHelper = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), length, color);
@@ -164,7 +197,6 @@ function createRay(localDirection, localOffset = new THREE.Vector3(), length = 5
 
     return { raycaster, arrowHelper, update };
 }
-
 
 function createRayCasters() {
     const rayFrontDirection = new THREE.Vector3(-1, 0, 0);
@@ -186,10 +218,6 @@ function createRayCasters() {
     };
 }
 
-
-
-
-
 function createSideRays(rayFrontDirection, isRight = false) {
     const rotation = isRight ? -1 : 1
     const xOffset = -carLength / 2
@@ -208,11 +236,10 @@ function createSideRays(rayFrontDirection, isRight = false) {
     const ray22Offset = new THREE.Vector3(xOffset, 0, zOffset);
     const ray22 = createRay(ray22Direction, ray22Offset);
 
-
     return { rayNarrow, ray45, ray22 };
 }
 
-
+// --- SYNC/UPDATE (inchangé) ---
 function syncMeshesAndBodies() {
     carMesh.position.copy(carBody.position);
     carMesh.quaternion.copy(carBody.quaternion);
@@ -254,6 +281,7 @@ function updateCar() {
     }
 }
 
+// --- OBJETS (inchangé) ---
 function createRoad() {
     const roadGeometry = new THREE.BoxGeometry(ROAD_WIDTH, ROAD_HEIGHT, ROAD_DEPTH);
     const roadMaterial = new THREE.MeshPhongMaterial({ color: "#424242ff" });
@@ -286,16 +314,8 @@ function createFloorLamp() {
     const lightIntensity = 50
     const light = new THREE.PointLight(lightColor, lightIntensity)
 
-    const lampDim = {
-        x: 1,
-        y: 0.3,
-        z: 1
-    }
-    const postDim = {
-        x: 0.3,
-        y: 6,
-        z: 0.3
-    }
+    const lampDim = { x: 1, y: 0.3, z: 1 }
+    const postDim = { x: 0.3, y: 6, z: 0.3 }
     light.position.setX(lampDim.x / 3)
     light.position.setY(-lampDim.y / 2 - 0.001)
 
@@ -350,6 +370,7 @@ function createCar() {
 
     return { carMesh, carBody, vehicle, wheelBodies, wheelMeshes };
 }
+
 function addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down, carLength, carWidth) {
     vehicle.addWheel({
         body: wheelBodies[0],
@@ -369,7 +390,6 @@ function addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down, carL
         axis: wheelAxis,
         direction: down
     });
-
     vehicle.addWheel({
         body: wheelBodies[3],
         position: new CANNON.Vec3(carLength / 2, -carHeight / 2, -carWidth / 2),
@@ -379,7 +399,6 @@ function addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down, carL
 }
 
 function getWheelBody(wheelShape) {
-
     return new CANNON.Body({
         shape: wheelShape,
         material: wheelPhysicsMaterial,
@@ -397,3 +416,5 @@ function getWheelMesh(geometry, material) {
     return new THREE.Mesh(geometry, material)
 }
 
+// --- BOOT ---
+initLevel()
