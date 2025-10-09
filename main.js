@@ -144,7 +144,7 @@ function resetLevel() {
     initLevel()
 
 }
-
+const PHYS_DT = 1 / 60
 
 // --- SOCKET ---
 socket.onmessage = (event) => {
@@ -158,7 +158,7 @@ socket.onmessage = (event) => {
 let speeds = { x: 0, y: 0, z: 0 }
 function animate(ts) {
     renderer.render(scene, camera);
-    world.fixedStep()
+    world.fixedStep(PHYS_DT)
     // cannonDebugger.update()
 
     syncMeshesAndBodies();
@@ -174,9 +174,9 @@ function animate(ts) {
     }));
     const oldSpeeds = { ...speeds }
     speeds = carBody.velocity
-    const xAcceleration = (speeds.x - oldSpeeds.x) / ts
-    const yAcceleration = (speeds.y - oldSpeeds.y) / ts
-    const zAcceleration = (speeds.z - oldSpeeds.z) / ts
+    const xAcceleration = (speeds.x - oldSpeeds.x) / PHYS_DT
+    const yAcceleration = (speeds.y - oldSpeeds.y) / PHYS_DT
+    const zAcceleration = (speeds.z - oldSpeeds.z) / PHYS_DT
     const accelerations = { x: xAcceleration, y: yAcceleration, z: zAcceleration }
     const aiWorld = { sensors: rayIntersections, speeds, accelerations, positions: { car: carMesh.position, road: roadMesh.position } }
     socket.send(JSON.stringify(aiWorld))
