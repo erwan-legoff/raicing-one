@@ -9,9 +9,25 @@ const socket = new WebSocket("ws://localhost:8000/ai");
 socket.onopen = () => {
     console.log("Connecté !");
 };
-
+const CONTROLS = {
+    FORWARD: "ArrowUp",
+    BACKWARD: "ArrowDown",
+    LEFT: "ArrowLeft",
+    RIGHT: "ArrowRight",
+}
+const AI_CONTROLS = {
+    LEFT: CONTROLS.LEFT,
+    FORWARD: CONTROLS.FORWARD,
+    RIGHT: CONTROLS.RIGHT,
+    BACKWARD: CONTROLS.BACKWARD,
+};
 socket.onmessage = (event) => {
-    console.log("Message reçu :", event.data);
+    const data = JSON.parse(event.data);
+    if (data.driving_inputs) {
+        CONTROLS_PRESSED = data.driving_inputs.map((aiInput) => {
+            return AI_CONTROLS[aiInput]
+        })
+    }
 };
 
 socket.onclose = () => {
@@ -59,12 +75,8 @@ const CAM_PARAM = {
     farClip: 1000
 }
 
-const CONTROLS = {
-    FORWARD: "ArrowUp",
-    BACKWARD: "ArrowDown",
-    LEFT: "ArrowLeft",
-    RIGHT: "ArrowRight",
-}
+
+
 let CONTROLS_PRESSED = []
 window.addEventListener("keydown", function (e) {
     if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.code) > -1) {
@@ -158,7 +170,15 @@ function createRayCasters() {
 
     const frontRay = createRay(rayFrontDirection, rayFrontOffset);
 
-    return { frontRay, left45Ray, leftNarrowRay, left22Ray, right45Ray, rightNarrowRay, right22Ray };
+    return {
+        left45Ray,
+        left22Ray,
+        leftNarrowRay,
+        frontRay,
+        rightNarrowRay,
+        right22Ray,
+        right45Ray
+    };
 }
 
 const rays = createRayCasters();
