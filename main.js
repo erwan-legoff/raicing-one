@@ -39,7 +39,7 @@ window.addEventListener("keyup", (event) => {
 const scene = new THREE.Scene();
 const cannonDebugger = new CannonDebugger(scene, world)
 
-const SEND_HZ = 30;
+const SEND_HZ = 4;
 let lastSend = 0
 
 const carHeight = 0.5
