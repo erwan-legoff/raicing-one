@@ -115,7 +115,7 @@ function initLevel() {
     rays = createRayCasters();
     Object.values(rays).forEach(ray => scene.add(ray.arrowHelper));
 }
-
+let PLAY = true;
 function resetLevel() {
     // retirer du monde physique
     try { vehicle?.removeFromWorld?.(world) } catch { }
@@ -149,8 +149,12 @@ const PHYS_DT = 1 / 60
 // --- SOCKET ---
 socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    if (data.driving_inputs) {
+
+    if (data.driving_inputs != undefined && data.driving_inputs.length > 0) {
         CONTROLS_PRESSED = data.driving_inputs.map((aiInput) => AI_CONTROLS[aiInput])
+        console.log("<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>")
+        console.log(CONTROLS_PRESSED)
+        console.log("<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>")
     }
 };
 
@@ -179,7 +183,12 @@ function animate(ts) {
     const zAcceleration = (speeds.z - oldSpeeds.z) / PHYS_DT
     const accelerations = { x: xAcceleration, y: yAcceleration, z: zAcceleration }
     const aiWorld = { sensors: rayIntersections, speeds, accelerations, positions: { car: carMesh.position, road: roadMesh.position } }
-    socket.send(JSON.stringify(aiWorld))
+    if (speeds.z > 0.2 && CONTROLS_PRESSED.includes(CONTROLS.FORWARD)) {
+        console.log("WTF")
+    }
+    if (carMesh.position.y < 0.1) {
+        socket.send(JSON.stringify(aiWorld))
+    }
     lastSend = ts;
     if (carMesh.position.y < (roadMesh.position.y - carHeight)) {
         resetLevel()
@@ -272,11 +281,13 @@ function updateGame() {
     }
 
     if (CONTROLS_PRESSED.includes(CONTROLS.FORWARD)) {
+        console.log("😰😰😰😰😰😰😰😰😰😰😰")
         vehicle.setWheelForce(ENGINE_FORCE, 0);
         vehicle.setWheelForce(ENGINE_FORCE, 1);
     } else if (CONTROLS_PRESSED.includes(CONTROLS.BACKWARD)) {
-        vehicle.setWheelForce(-ENGINE_FORCE / 2, 0);
-        vehicle.setWheelForce(-ENGINE_FORCE / 2, 1);
+        console.log("😒😒😒😒😒😒😒😒😒😒😒😒😒😒😒")
+        // vehicle.setWheelForce(-ENGINE_FORCE / 2, 0);
+        // vehicle.setWheelForce(-ENGINE_FORCE / 2, 1);
     } else {
         vehicle.setWheelForce(0, 0);
         vehicle.setWheelForce(0, 1);
@@ -297,7 +308,7 @@ function updateGame() {
 // --- OBJETS (inchangé) ---
 function createRoad() {
     const roadGeometry = new THREE.BoxGeometry(ROAD_WIDTH, ROAD_HEIGHT, ROAD_DEPTH);
-    const roadMaterial = new THREE.MeshPhongMaterial({ color: "#424242ff" });
+    const roadMaterial = new THREE.MeshPhongMaterial({ color: "#424242" });
     const roadMesh = new THREE.Mesh(roadGeometry, roadMaterial);
     const halfExtents = new CANNON.Vec3(ROAD_WIDTH / 2, ROAD_HEIGHT / 2, ROAD_DEPTH / 2)
     const roadBody = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Box(halfExtents) })
@@ -332,7 +343,7 @@ function createFloorLamp() {
     light.position.setX(lampDim.x / 3)
     light.position.setY(-lampDim.y / 2 - 0.001)
 
-    const floorLampMaterial = new THREE.MeshPhongMaterial({ reflectivity: 1, shininess: 75, specular: "#6c6f7fff" })
+    const floorLampMaterial = new THREE.MeshPhongMaterial({ reflectivity: 1, shininess: 75, specular: "#6c6f7f" })
     const floorLampGroup = new THREE.Group()
     const lampGeometry = new THREE.BoxGeometry(lampDim.x, lampDim.y, lampDim.z)
     const lampMesh = new THREE.Mesh(lampGeometry, floorLampMaterial)
