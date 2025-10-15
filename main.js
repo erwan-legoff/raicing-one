@@ -1,14 +1,15 @@
 import * as THREE from 'three'
 import * as CANNON from 'cannon-es'
 import CannonDebugger from 'cannon-es-debugger';
+import { depth } from 'three/tsl';
 
 const world = new CANNON.World({
     gravity: new CANNON.Vec3(0, -9.80665, 0)
 })
 
 const socket = new WebSocket("ws://localhost:8000/ai");
-socket.onopen = () => { console.log("Connecté !"); };
-socket.onclose = () => { console.log("Connexion fermée"); };
+socket.onopen = () => { console.log("Connecté !"); shouldWait = true };
+socket.onclose = () => { console.log("Connexion fermée"); shouldWait = false };
 
 const CONTROLS = {
     FORWARD: "ArrowUp",
@@ -24,7 +25,9 @@ const AI_CONTROLS = {
     BACKWARD: CONTROLS.BACKWARD,
     RESET: CONTROLS.RESET
 };
-
+let frameCounter = 0
+const MIN_FRAMES_BEFORE_START = 50
+const MIN_FRAMES_BEFORE_SIDE = 400
 let CONTROLS_PRESSED = []
 window.addEventListener("keydown", function (e) {
     if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
@@ -116,7 +119,9 @@ function initLevel() {
     Object.values(rays).forEach(ray => scene.add(ray.arrowHelper));
 }
 let PLAY = true;
+let shouldWait = false;
 function resetLevel() {
+    CONTROLS_PRESSED = []
     // retirer du monde physique
     try { vehicle?.removeFromWorld?.(world) } catch { }
     try { carBody && world.removeBody(carBody) } catch { }
@@ -139,6 +144,8 @@ function resetLevel() {
     roadMesh = roadBody = leftWallMesh = rightWallMesh = undefined
     rays = undefined
     floorLamp = undefined
+    frameCounter = 0
+
 
     // relancer
     initLevel()
@@ -149,18 +156,22 @@ const PHYS_DT = 1 / 60
 // --- SOCKET ---
 socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
-
+    PLAY = true;
     if (data.driving_inputs != undefined && data.driving_inputs.length > 0) {
-        CONTROLS_PRESSED = data.driving_inputs.map((aiInput) => AI_CONTROLS[aiInput])
-        console.log("<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>")
+        let driving_inputs = data.driving_inputs.map((aiInput) => AI_CONTROLS[aiInput])
+
+        CONTROLS_PRESSED = driving_inputs
         console.log(CONTROLS_PRESSED)
-        console.log("<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>")
     }
 };
 
 // --- LOOP ---
 let speeds = { x: 0, y: 0, z: 0 }
 function animate(ts) {
+    frameCounter++
+    console.log(frameCounter)
+
+    if (!PLAY) return
     renderer.render(scene, camera);
     world.fixedStep(PHYS_DT)
     // cannonDebugger.update()
@@ -182,12 +193,13 @@ function animate(ts) {
     const yAcceleration = (speeds.y - oldSpeeds.y) / PHYS_DT
     const zAcceleration = (speeds.z - oldSpeeds.z) / PHYS_DT
     const accelerations = { x: xAcceleration, y: yAcceleration, z: zAcceleration }
-    const aiWorld = { sensors: rayIntersections, speeds, accelerations, positions: { car: carMesh.position, road: roadMesh.position } }
-    if (speeds.z > 0.2 && CONTROLS_PRESSED.includes(CONTROLS.FORWARD)) {
-        console.log("WTF")
-    }
+    const aiWorld = { sensors: rayIntersections, speeds, accelerations, positions: { car: carMesh.position, road: roadMesh.position }, frameId: frameCounter, roadSize: { width: ROAD_WIDTH, height: ROAD_HEIGHT, depth: ROAD_DEPTH } }
+    CONTROLS_PRESSED = []
     if (carMesh.position.y < 0.1) {
         socket.send(JSON.stringify(aiWorld))
+        if (shouldWait) {
+            PLAY = false;
+        }
     }
     lastSend = ts;
     if (carMesh.position.y < (roadMesh.position.y - carHeight)) {
@@ -217,8 +229,8 @@ function createRay(localDirection, localOffset = new THREE.Vector3(), length = 5
 }
 
 function createRayCasters() {
-    const rayFrontDirection = new THREE.Vector3(-1, 0, 0);
-    const rayFrontOffset = new THREE.Vector3(-carLength / 2, 0, 0);
+    const rayFrontDirection = new THREE.Vector3(0, 0, -1);
+    const rayFrontOffset = new THREE.Vector3(0, 0, -carLength / 2);
 
     const { rayNarrow: leftNarrowRay, ray45: left45Ray, ray22: left22Ray } = createSideRays(rayFrontDirection);
     const { rayNarrow: rightNarrowRay, ray45: right45Ray, ray22: right22Ray } = createSideRays(rayFrontDirection, true);
@@ -238,8 +250,8 @@ function createRayCasters() {
 
 function createSideRays(rayFrontDirection, isRight = false) {
     const rotation = isRight ? -1 : 1
-    const xOffset = -carLength / 2
-    const zOffset = rotation * (carWidth / 2)
+    const xOffset = -rotation * (carWidth / 2)
+    const zOffset = -carLength / 2
     const degToRad = Math.PI / 180;
 
     const rayNarrowDirection = rayFrontDirection.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation * 8 * degToRad);
@@ -281,7 +293,6 @@ function updateGame() {
     }
 
     if (CONTROLS_PRESSED.includes(CONTROLS.FORWARD)) {
-        console.log("😰😰😰😰😰😰😰😰😰😰😰")
         vehicle.setWheelForce(ENGINE_FORCE, 0);
         vehicle.setWheelForce(ENGINE_FORCE, 1);
     } else if (CONTROLS_PRESSED.includes(CONTROLS.BACKWARD)) {
@@ -360,14 +371,14 @@ function createFloorLamp() {
 }
 
 function createCar() {
-    const down = new CANNON.Vec3(0, -1, 0)
+    const down = new CANNON.Vec3(0, 1, 0)
 
-    const carGeometry = new THREE.BoxGeometry(carLength, carHeight, carWidth);
+    const carGeometry = new THREE.BoxGeometry(carWidth, carHeight, carLength);
     const carMaterial = new THREE.MeshPhongMaterial({ color: "#327fa8" });
     const carMesh = new THREE.Mesh(carGeometry, carMaterial);
 
 
-    const halfExtents = new CANNON.Vec3(carLength / 2, carHeight / 2, carWidth / 2)
+    const halfExtents = new CANNON.Vec3(carWidth / 2, carHeight / 2, carLength / 2)
     const carBody = new CANNON.Body({
         mass: 120,
         shape: new CANNON.Box(halfExtents)
@@ -376,7 +387,7 @@ function createCar() {
 
 
 
-    const wheelAxis = new CANNON.Vec3(0, 0, 1)
+    const wheelAxis = new CANNON.Vec3(-1, 0, 0)
     const wheelSize = carHeight / 3
     const wheelShape = new CANNON.Sphere(wheelSize)
 
@@ -391,36 +402,39 @@ function createCar() {
 
 
     addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down, carLength, carWidth);
-    carBody.quaternion.setFromAxisAngle(down, Math.PI / 2)
+    // carBody.quaternion.setFromAxisAngle(down, Math.PI / 2)
 
     return { carMesh, carBody, vehicle, wheelBodies, wheelMeshes };
 }
 
 function addVehicleWheels(vehicle, wheelBodies, carHeight, wheelAxis, down, carLength, carWidth) {
     vehicle.addWheel({
-        body: wheelBodies[0],
-        position: new CANNON.Vec3(-carLength / 2, -carHeight / 2, carWidth / 2),
+        body: wheelBodies[1],
+        position: new CANNON.Vec3(-carWidth / 2, -carHeight / 2, -carLength / 2),
         axis: wheelAxis,
         direction: down
     });
+
     vehicle.addWheel({
-        body: wheelBodies[1],
-        position: new CANNON.Vec3(-carLength / 2, -carHeight / 2, -carWidth / 2),
+        body: wheelBodies[3],
+        position: new CANNON.Vec3(carWidth / 2, -carHeight / 2, -carLength / 2),
+        axis: wheelAxis,
+        direction: down
+    });
+
+    vehicle.addWheel({
+        body: wheelBodies[0],
+        position: new CANNON.Vec3(-carWidth / 2, -carHeight / 2, carLength / 2),
         axis: wheelAxis,
         direction: down
     });
     vehicle.addWheel({
         body: wheelBodies[2],
-        position: new CANNON.Vec3(carLength / 2, -carHeight / 2, carWidth / 2),
+        position: new CANNON.Vec3(carWidth / 2, -carHeight / 2, carLength / 2),
         axis: wheelAxis,
         direction: down
     });
-    vehicle.addWheel({
-        body: wheelBodies[3],
-        position: new CANNON.Vec3(carLength / 2, -carHeight / 2, -carWidth / 2),
-        axis: wheelAxis,
-        direction: down
-    });
+
 }
 
 function getWheelBody(wheelShape) {
