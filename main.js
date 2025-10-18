@@ -10,6 +10,7 @@ const world = new CANNON.World({
 const socket = new WebSocket("ws://localhost:8000/ai");
 socket.onopen = () => { console.log("Connecté !"); shouldWait = true };
 socket.onclose = () => { console.log("Connexion fermée"); shouldWait = false };
+let reward = 0;
 
 const CONTROLS = {
     FORWARD: "ArrowUp",
@@ -51,7 +52,7 @@ const CAR_LENGTH = 2
 
 const ROAD_HEIGHT = 1
 const ROAD_WIDTH = 8
-const ROAD_DEPTH = 1000
+const ROAD_DEPTH = 10000
 
 const CAM_PARAM = {
     fieldOfView: 75,
@@ -157,6 +158,9 @@ const PHYS_DT = 1 / 60
 // --- SOCKET ---
 socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
+    if (data && data.reward !== undefined) {
+        reward = data.reward;
+    }
     PLAY = true;
     if (data.driving_inputs != undefined && data.driving_inputs.length > 0) {
         let driving_inputs = data.driving_inputs.map((aiInput) => AI_CONTROLS[aiInput])
@@ -211,7 +215,7 @@ function animate(ts) {
     }
 
     lastSend = ts;
-    if (carMesh.position.y < roadMesh.position.y || (CONTROLS_PRESSED.includes(CONTROLS.FORWARD) && -speeds.z < 0.01)) {
+    if (carMesh.position.y < roadMesh.position.y || ((CONTROLS_PRESSED.includes(CONTROLS.FORWARD) || CONTROLS_PRESSED.includes(CONTROLS.BACKWARD)) && Math.abs(speeds.z) < 0.1 && carMesh.position.z < -3 && oldSpeeds.z === speeds.z)) {
         resetLevel()
     }
 
@@ -295,9 +299,11 @@ function syncMeshesAndBodies() {
 }
 
 function updateGame() {
-    const ENGINE_FORCE = 10;
-    const STEERING_ANGLE = Math.PI / 40;
-    document.getElementById("controls").textContent = CONTROLS_PRESSED.concat("");
+    const ENGINE_FORCE = 7;
+    const STEERING_ANGLE = Math.PI / 17;
+    const displayedControls = CONTROLS_PRESSED.length ? CONTROLS_PRESSED.concat("") : "N/A"
+    document.getElementById("controls").textContent = displayedControls;
+    document.getElementById("reward").textContent = `${Math.round(reward)}`;
     document.getElementById("speed").textContent = `${Math.round(-carBody.velocity.z * 100) / 100}m/s`
 
     if (CONTROLS_PRESSED.includes(CONTROLS.RESET)) {
