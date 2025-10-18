@@ -50,7 +50,7 @@ const CAR_WIDTH = 1
 const CAR_LENGTH = 2
 
 const ROAD_HEIGHT = 1
-const ROAD_WIDTH = 10
+const ROAD_WIDTH = 8
 const ROAD_DEPTH = 1000
 
 const CAM_PARAM = {
@@ -203,14 +203,15 @@ function animate(ts) {
         carSize: { width: CAR_WIDTH, height: CAR_HEIGHT, depth: CAR_LENGTH }
     }
     CONTROLS_PRESSED = []
-    if (carMesh.position.y < 0.1) {
+    if (carMesh.position.y < 0.1 || -carMesh.position.z > 1) {
         socket.send(JSON.stringify(aiWorld))
         if (shouldWait) {
             PLAY = false;
         }
     }
+
     lastSend = ts;
-    if (carMesh.position.y < (roadMesh.position.y - CAR_HEIGHT)) {
+    if (carMesh.position.y < roadMesh.position.y || (CONTROLS_PRESSED.includes(CONTROLS.FORWARD) && -speeds.z < 0.01)) {
         resetLevel()
     }
 
@@ -294,8 +295,11 @@ function syncMeshesAndBodies() {
 }
 
 function updateGame() {
-    const ENGINE_FORCE = 20;
-    const STEERING_ANGLE = Math.PI / 20;
+    const ENGINE_FORCE = 10;
+    const STEERING_ANGLE = Math.PI / 40;
+    document.getElementById("controls").textContent = CONTROLS_PRESSED.concat("");
+    document.getElementById("speed").textContent = `${Math.round(-carBody.velocity.z * 100) / 100}m/s`
+
     if (CONTROLS_PRESSED.includes(CONTROLS.RESET)) {
         resetLevel()
     }
