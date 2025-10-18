@@ -51,7 +51,7 @@ const CAR_WIDTH = 1
 const CAR_LENGTH = 2
 
 const ROAD_HEIGHT = 1
-const ROAD_WIDTH = 8
+let ROAD_WIDTH = 8
 const ROAD_DEPTH = 10000
 
 const CAM_PARAM = {
@@ -166,7 +166,6 @@ socket.onmessage = (event) => {
         let driving_inputs = data.driving_inputs.map((aiInput) => AI_CONTROLS[aiInput])
 
         CONTROLS_PRESSED = driving_inputs
-        console.log(CONTROLS_PRESSED)
     }
 };
 
@@ -174,7 +173,6 @@ socket.onmessage = (event) => {
 let speeds = { x: 0, y: 0, z: 0 }
 function animate(ts) {
     frameCounter++
-    console.log(frameCounter)
 
     if (!PLAY) return
     renderer.render(scene, camera);
@@ -206,6 +204,10 @@ function animate(ts) {
         roadSize: { width: ROAD_WIDTH, height: ROAD_HEIGHT, depth: ROAD_DEPTH },
         carSize: { width: CAR_WIDTH, height: CAR_HEIGHT, depth: CAR_LENGTH }
     }
+
+    if (carMesh.position.y < roadMesh.position.y || ((CONTROLS_PRESSED.includes(CONTROLS.FORWARD) || CONTROLS_PRESSED.includes(CONTROLS.BACKWARD)) && Math.abs(speeds.z) < 0.1 && carMesh.position.z < -3)) {
+        resetLevel()
+    }
     CONTROLS_PRESSED = []
     if (carMesh.position.y < 0.1 || -carMesh.position.z > 1) {
         socket.send(JSON.stringify(aiWorld))
@@ -215,9 +217,7 @@ function animate(ts) {
     }
 
     lastSend = ts;
-    if (carMesh.position.y < roadMesh.position.y || ((CONTROLS_PRESSED.includes(CONTROLS.FORWARD) || CONTROLS_PRESSED.includes(CONTROLS.BACKWARD)) && Math.abs(speeds.z) < 0.1 && carMesh.position.z < -3 && oldSpeeds.z === speeds.z)) {
-        resetLevel()
-    }
+
 
 }
 
@@ -314,7 +314,6 @@ function updateGame() {
         vehicle.setWheelForce(ENGINE_FORCE, 0);
         vehicle.setWheelForce(ENGINE_FORCE, 1);
     } else if (CONTROLS_PRESSED.includes(CONTROLS.BACKWARD)) {
-        console.log("😒😒😒😒😒😒😒😒😒😒😒😒😒😒😒")
         vehicle.setWheelForce(-ENGINE_FORCE / 2, 0);
         vehicle.setWheelForce(-ENGINE_FORCE / 2, 1);
     } else {
@@ -336,6 +335,7 @@ function updateGame() {
 
 // --- OBJETS (inchangé) ---
 function createRoad() {
+    ROAD_WIDTH = 4 + Math.random() * 6
     const roadGeometry = new THREE.BoxGeometry(ROAD_WIDTH, ROAD_HEIGHT, ROAD_DEPTH);
     const roadMaterial = new THREE.MeshPhongMaterial({ color: "#424242" });
     const roadMesh = new THREE.Mesh(roadGeometry, roadMaterial);
