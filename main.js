@@ -11,6 +11,10 @@ const socket = new WebSocket("ws://localhost:8000/ai");
 socket.onopen = () => { console.log("Connecté !"); shouldWait = true };
 socket.onclose = () => { console.log("Connexion fermée"); shouldWait = false };
 let reward = 0;
+const trainingInfo = {
+    count: 0,
+    lastTimestamp: null
+};
 
 const CONTROLS = {
     FORWARD: "ArrowUp",
@@ -30,6 +34,14 @@ let frameCounter = 0
 const MIN_FRAMES_BEFORE_START = 50
 const MIN_FRAMES_BEFORE_SIDE = 400
 let CONTROLS_PRESSED = []
+let accelerations = { x: 0, y: 0, z: 0 }
+const HUD_SAMPLE_SIZE = 3;
+const hudSamples = {
+    reward: [],
+    speed: [],
+    acceleration: [],
+    position: []
+};
 window.addEventListener("keydown", function (e) {
     if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
 }, false);
@@ -161,6 +173,14 @@ socket.onmessage = (event) => {
     if (data && data.reward !== undefined) {
         reward = data.reward;
     }
+    if (data && data.training) {
+        const { count, last } = data.training;
+        if (typeof count === 'number') trainingInfo.count = count;
+        if (last !== undefined && last !== null) {
+            const parsed = typeof last === 'number' ? last : Date.parse(last);
+            if (!Number.isNaN(parsed)) trainingInfo.lastTimestamp = parsed;
+        }
+    }
     PLAY = true;
     if (data.driving_inputs != undefined && data.driving_inputs.length > 0) {
         let driving_inputs = data.driving_inputs.map((aiInput) => AI_CONTROLS[aiInput])
@@ -182,6 +202,15 @@ function animate(ts) {
     syncMeshesAndBodies();
     updateGame();
 
+    const oldSpeeds = { ...speeds }
+    const currentVelocity = carBody.velocity
+    speeds = { x: currentVelocity.x, y: currentVelocity.y, z: currentVelocity.z }
+    accelerations = {
+        x: (speeds.x - oldSpeeds.x) / PHYS_DT,
+        y: (speeds.y - oldSpeeds.y) / PHYS_DT,
+        z: (speeds.z - oldSpeeds.z) / PHYS_DT
+    }
+
     if (ts - lastSend < 1000 / SEND_HZ) return;
     if (socket.readyState !== WebSocket.OPEN) return;
 
@@ -190,12 +219,6 @@ function animate(ts) {
         if (!intersects || !intersects.length) return [name, 10000]
         return [name, intersects[0].distance];
     }));
-    const oldSpeeds = { ...speeds }
-    speeds = carBody.velocity
-    const xAcceleration = (speeds.x - oldSpeeds.x) / PHYS_DT
-    const yAcceleration = (speeds.y - oldSpeeds.y) / PHYS_DT
-    const zAcceleration = (speeds.z - oldSpeeds.z) / PHYS_DT
-    const accelerations = { x: xAcceleration, y: yAcceleration, z: zAcceleration }
     const aiWorld = {
         sensors: rayIntersections,
         speeds, accelerations,
@@ -299,12 +322,23 @@ function syncMeshesAndBodies() {
 }
 
 function updateGame() {
-    const ENGINE_FORCE = 7;
+    const ENGINE_FORCE = 8;
     const STEERING_ANGLE = Math.PI / 17;
     const displayedControls = CONTROLS_PRESSED.length ? CONTROLS_PRESSED.concat("") : "N/A"
     document.getElementById("controls").textContent = displayedControls;
-    document.getElementById("reward").textContent = `${Math.round(reward)}`;
-    document.getElementById("speed").textContent = `${Math.round(-carBody.velocity.z * 100) / 100}m/s`
+    const averagedReward = pushHudSample('reward', reward);
+    const averagedSpeed = pushHudSample('speed', -carBody.velocity.z);
+    const averagedAcceleration = pushHudSample('acceleration', -accelerations.z);
+    const averagedPosition = pushHudSample('position', -carMesh.position.z);
+    document.getElementById("reward").textContent = zeroFill(averagedReward, { decimals: 0, width: 3 });
+    document.getElementById("speed").textContent = `${zeroFill(averagedSpeed, { decimals: 2 })}m/s`
+    document.getElementById("acceleration").textContent = `${zeroFill(averagedAcceleration, { decimals: 2 })}m/s`
+    const trainingElapsedSeconds = trainingInfo.lastTimestamp ? Math.max(0, (Date.now() - trainingInfo.lastTimestamp) / 1000) : null;
+    const trainingCount = zeroFill(trainingInfo.count, { decimals: 0, width: 3 });
+    document.getElementById("training").textContent = trainingElapsedSeconds === null
+        ? `Training #${trainingCount} - N/A`
+        : `Training #${trainingCount} - ${formatElapsed(trainingElapsedSeconds)}`;
+    document.getElementById("position").textContent = `${zeroFill(averagedPosition, { decimals: 1 })}m`
 
     if (CONTROLS_PRESSED.includes(CONTROLS.RESET)) {
         resetLevel()
@@ -402,7 +436,8 @@ function createCar() {
         shape: new CANNON.Box(halfExtents)
     })
     carBody.position.y = CAR_HEIGHT * 4
-
+    const x_max = (ROAD_WIDTH / 2) - (CAR_WIDTH)
+    carBody.position.x = x_max - Math.random() * x_max * 2
 
 
     const wheelAxis = new CANNON.Vec3(-1, 0, 0)
@@ -475,3 +510,35 @@ function getWheelMesh(geometry, material) {
 
 // --- BOOT ---
 initLevel()
+
+function zeroFill(value, { decimals = 2, width = 0 } = {}) {
+    const num = Number.isFinite(value) ? value : 0;
+    const formatted = num.toFixed(decimals);
+    if (!width) return formatted;
+    if (formatted.startsWith('-')) {
+        const withoutSign = formatted.slice(1);
+        return `-${withoutSign.padStart(Math.max(width, withoutSign.length), '0')}`;
+    }
+    return formatted.padStart(Math.max(width, formatted.length), '0');
+}
+
+function pushHudSample(key, value) {
+    const samples = hudSamples[key];
+    if (!samples) return value ?? 0;
+    const numericValue = Number.isFinite(value) ? value : 0;
+    samples.push(numericValue);
+    if (samples.length > HUD_SAMPLE_SIZE) samples.shift();
+    const sum = samples.reduce((total, sample) => total + sample, 0);
+    return sum / samples.length;
+}
+
+function formatElapsed(seconds) {
+    if (!Number.isFinite(seconds)) return 'N/A';
+    if (seconds < 60) return `${seconds.toFixed(1)}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds - minutes * 60;
+    if (minutes < 60) return `${minutes}m ${remainingSeconds.toFixed(0)}s ago`;
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours}h ${remainingMinutes}m ago`;
+}
