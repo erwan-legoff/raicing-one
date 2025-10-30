@@ -98,6 +98,11 @@ let carMesh, carBody, vehicle, wheelBodies, wheelMeshes
 let roadMesh, roadBody, leftWallMesh, rightWallMesh
 let streetLights = []
 let rays
+let MIN_THEOROTICAL_Z
+let MIN_Z
+let MAX_Z_THEOROTICAL_LIGHT
+let MAX_Z
+let zStreetLight
 
 // --- INIT + RESET ---
 function initLevel() {
@@ -124,23 +129,7 @@ function initLevel() {
     }))
 
     // lampadaire
-    
-    const SPACE_BETWEEN_STREET_LIGHTS = 100
-    const STREET_LIGHT_COUNT = ROAD_DEPTH / SPACE_BETWEEN_STREET_LIGHTS
-    let zStreetLight = -ROAD_DEPTH/2
-    const X_STREET_LIGHT = -ROAD_WIDTH / 2
-    for (let i = 0; i < STREET_LIGHT_COUNT; i++) {
-        const streetLight = createStreetLight()
-
-        zStreetLight += SPACE_BETWEEN_STREET_LIGHTS 
-
-        streetLight.position.setX(X_STREET_LIGHT)
-        streetLight.position.setZ(zStreetLight)
-
-        streetLights.push(streetLight)
-        scene.add(streetLight)  
-        
-    }
+    createStreetLights();
     
 
     // rays
@@ -149,6 +138,34 @@ function initLevel() {
 }
 let PLAY = true;
 let shouldWait = false;
+function createStreetLights() {
+    MIN_THEOROTICAL_Z = camera.position.z;
+    MIN_Z = MIN_THEOROTICAL_Z;
+    const SPACE_BETWEEN_STREET_LIGHTS = 10;
+    const MAX_STREET_LIGHTS = 10;
+    const STREET_LIGHT_COUNT = Math.min(ROAD_DEPTH / SPACE_BETWEEN_STREET_LIGHTS, MAX_STREET_LIGHTS);
+    MAX_Z_THEOROTICAL_LIGHT = -MIN_THEOROTICAL_Z + STREET_LIGHT_COUNT * SPACE_BETWEEN_STREET_LIGHTS;
+    MAX_Z = MAX_Z_THEOROTICAL_LIGHT;
+    zStreetLight = -ROAD_DEPTH / 2;
+
+    const X_STREET_LIGHT = -ROAD_WIDTH / 2;
+    for (let i = 0; -zStreetLight > -ROAD_DEPTH / 2; i++) {
+        if (zStreetLight < MIN_THEOROTICAL_Z) {
+            const hasLight = -zStreetLight < MAX_Z_THEOROTICAL_LIGHT;
+            const streetLight = createStreetLight(hasLight);
+
+
+            streetLight.position.setX(X_STREET_LIGHT);
+            streetLight.position.setZ(zStreetLight);
+
+            streetLights.push(streetLight);
+            scene.add(streetLight);
+        }
+        zStreetLight += SPACE_BETWEEN_STREET_LIGHTS;
+
+    }
+}
+
 function resetLevel() {
     CONTROLS_PRESSED = []
     // retirer du monde physique
@@ -411,21 +428,25 @@ function createLight() {
     return light;
 }
 
-function createStreetLight() {
-    const lightColor = "rgba(255, 179, 0, 1)"
-    const lightIntensity = 50
-    const light = new THREE.PointLight(lightColor, lightIntensity)
+function createStreetLight(hasLight= true) {
 
     const lampDim = { x: 1, y: 0.3, z: 1 }
     const postDim = { x: 0.3, y: 6, z: 0.3 }
-    light.position.setX(lampDim.x / 3)
-    light.position.setY(-lampDim.y / 2 - 0.001)
+    
 
     const floorLampMaterial = new THREE.MeshPhongMaterial({ reflectivity: 1, shininess: 75, specular: "#6c6f7f" })
     const floorLampGroup = new THREE.Group()
     const lampGeometry = new THREE.BoxGeometry(lampDim.x, lampDim.y, lampDim.z)
     const lampMesh = new THREE.Mesh(lampGeometry, floorLampMaterial)
-    lampMesh.add(light)
+    if(hasLight){
+        const lightColor = "rgba(255, 179, 0, 1)"
+        const lightIntensity = 50
+        const light = new THREE.PointLight(lightColor, lightIntensity)
+        light.position.setX(lampDim.x / 3)
+        light.position.setY(-lampDim.y / 2 - 0.001)
+        lampMesh.add(light)
+
+    }
 
     lampMesh.position.setX(postDim.x)
     lampMesh.position.setY(postDim.y / 2)
