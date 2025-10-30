@@ -1,7 +1,16 @@
 import * as THREE from 'three'
 import * as CANNON from 'cannon-es'
 import CannonDebugger from 'cannon-es-debugger';
-import { depth } from 'three/tsl';
+
+
+/**TODO
+ * La actuellement on recrée tous les lampadaires à chaque fois qu'on doit afficher une lumière de lampadaire
+ * On devrait seulement recréer le lampadaire concerné, le dernier n'ayant pas de lumière et supprimer le 1er ayant une lumière
+ * 2 pb : 
+ * - tout est dans la même liste (il faut donc séparer)
+ * - l'ordre est inversé a priori à cause du signe négatif de Z
+ * Donc ce qu'on fera la prochaine fois : sauvegarder dans le bon sens et de manière séparée les lampadaires allumés/éteint
+ */
 
 const world = new CANNON.World({
     gravity: new CANNON.Vec3(0, -9.80665, 0)
