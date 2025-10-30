@@ -33,6 +33,7 @@ const AI_CONTROLS = {
 let frameCounter = 0
 const MIN_FRAMES_BEFORE_START = 50
 const MIN_FRAMES_BEFORE_SIDE = 400
+
 let CONTROLS_PRESSED = []
 let accelerations = { x: 0, y: 0, z: 0 }
 const HUD_SAMPLE_SIZE = 3;
@@ -103,6 +104,8 @@ let MIN_Z
 let MAX_Z_THEOROTICAL_LIGHT
 let MAX_Z
 let zStreetLight
+const MAX_STREET_LIGHTS = 10;
+const SPACE_BETWEEN_STREET_LIGHTS = 10;
 
 // --- INIT + RESET ---
 function initLevel() {
@@ -139,31 +142,45 @@ function initLevel() {
 let PLAY = true;
 let shouldWait = false;
 function createStreetLights() {
-    MIN_THEOROTICAL_Z = camera.position.z;
-    MIN_Z = MIN_THEOROTICAL_Z;
-    const SPACE_BETWEEN_STREET_LIGHTS = 10;
-    const MAX_STREET_LIGHTS = 10;
-    const STREET_LIGHT_COUNT = Math.min(ROAD_DEPTH / SPACE_BETWEEN_STREET_LIGHTS, MAX_STREET_LIGHTS);
-    MAX_Z_THEOROTICAL_LIGHT = -MIN_THEOROTICAL_Z + STREET_LIGHT_COUNT * SPACE_BETWEEN_STREET_LIGHTS;
+    let hasSavedMax = false
+
+    
+    computeMaxTheoroticalZ();
     MAX_Z = MAX_Z_THEOROTICAL_LIGHT;
     zStreetLight = -ROAD_DEPTH / 2;
 
     const X_STREET_LIGHT = -ROAD_WIDTH / 2;
     for (let i = 0; -zStreetLight > -ROAD_DEPTH / 2; i++) {
         if (zStreetLight < MIN_THEOROTICAL_Z) {
+            
+            
             const hasLight = -zStreetLight < MAX_Z_THEOROTICAL_LIGHT;
+            // console.log("zStreetLight", zStreetLight)
+            // console.log("MAX_Z_THEOROTICAL_LIGHT",MAX_Z_THEOROTICAL_LIGHT)
             const streetLight = createStreetLight(hasLight);
 
 
             streetLight.position.setX(X_STREET_LIGHT);
             streetLight.position.setZ(zStreetLight);
+            if(hasLight && !hasSavedMax){
+               MAX_Z = zStreetLight
+               hasSavedMax = true 
+            }
 
             streetLights.push(streetLight);
             scene.add(streetLight);
+            
         }
         zStreetLight += SPACE_BETWEEN_STREET_LIGHTS;
-
+        
     }
+}
+
+function computeMaxTheoroticalZ() {
+    const STREET_LIGHT_COUNT = Math.min(ROAD_DEPTH / SPACE_BETWEEN_STREET_LIGHTS, MAX_STREET_LIGHTS);
+    MIN_THEOROTICAL_Z = camera.position.z;
+    MIN_Z = MIN_THEOROTICAL_Z;
+    MAX_Z_THEOROTICAL_LIGHT = -MIN_THEOROTICAL_Z + STREET_LIGHT_COUNT * SPACE_BETWEEN_STREET_LIGHTS;
 }
 
 function resetLevel() {
@@ -356,26 +373,21 @@ function syncMeshesAndBodies() {
 function updateGame() {
     const ENGINE_FORCE = 8;
     const STEERING_ANGLE = Math.PI / 17;
-    const displayedControls = CONTROLS_PRESSED.length ? CONTROLS_PRESSED.concat("") : "N/A"
-    document.getElementById("controls").textContent = displayedControls;
-    const averagedReward = pushHudSample('reward', reward);
-    const averagedSpeed = pushHudSample('speed', -carBody.velocity.z);
-    const averagedAcceleration = pushHudSample('acceleration', -accelerations.z);
-    const averagedPosition = pushHudSample('position', -carMesh.position.z);
-    document.getElementById("reward").textContent = zeroFill(averagedReward, { decimals: 0, width: 3 });
-    document.getElementById("speed").textContent = `${zeroFill(averagedSpeed, { decimals: 2 })}m/s`
-    document.getElementById("acceleration").textContent = `${zeroFill(averagedAcceleration, { decimals: 2 })}m/s`
-    const trainingElapsedSeconds = trainingInfo.lastTimestamp ? Math.max(0, (Date.now() - trainingInfo.lastTimestamp) / 1000) : null;
-    const trainingCount = zeroFill(trainingInfo.count, { decimals: 0, width: 3 });
-    document.getElementById("training").textContent = trainingElapsedSeconds === null
-        ? `Training #${trainingCount} - N/A`
-        : `Training #${trainingCount} - ${formatElapsed(trainingElapsedSeconds)}`;
-    document.getElementById("position").textContent = `${zeroFill(averagedPosition, { decimals: 1 })}m`
-
+    updateHUD();
+    computeMaxTheoroticalZ()
+    console.log("MAX_Z", MAX_Z)
+    console.log("MAX_Z_THEOROTICAL_LIGHT", MAX_Z_THEOROTICAL_LIGHT)
+    if(-MAX_Z + SPACE_BETWEEN_STREET_LIGHTS < MAX_Z_THEOROTICAL_LIGHT){
+        createStreetLights()
+    }
     if (CONTROLS_PRESSED.includes(CONTROLS.RESET)) {
         resetLevel()
     }
 
+    updateVehicle(ENGINE_FORCE, STEERING_ANGLE);
+}
+
+function updateVehicle(ENGINE_FORCE, STEERING_ANGLE) {
     if (CONTROLS_PRESSED.includes(CONTROLS.FORWARD)) {
         vehicle.setWheelForce(ENGINE_FORCE, 0);
         vehicle.setWheelForce(ENGINE_FORCE, 1);
@@ -397,6 +409,24 @@ function updateGame() {
         vehicle.setSteeringValue(0, 0);
         vehicle.setSteeringValue(0, 1);
     }
+}
+
+function updateHUD() {
+    const displayedControls = CONTROLS_PRESSED.length ? CONTROLS_PRESSED.concat("") : "N/A";
+    document.getElementById("controls").textContent = displayedControls;
+    const averagedReward = pushHudSample('reward', reward);
+    const averagedSpeed = pushHudSample('speed', -carBody.velocity.z);
+    const averagedAcceleration = pushHudSample('acceleration', -accelerations.z);
+    const averagedPosition = pushHudSample('position', -carMesh.position.z);
+    document.getElementById("reward").textContent = zeroFill(averagedReward, { decimals: 0, width: 3 });
+    document.getElementById("speed").textContent = `${zeroFill(averagedSpeed, { decimals: 2 })}m/s`;
+    document.getElementById("acceleration").textContent = `${zeroFill(averagedAcceleration, { decimals: 2 })}m/s`;
+    const trainingElapsedSeconds = trainingInfo.lastTimestamp ? Math.max(0, (Date.now() - trainingInfo.lastTimestamp) / 1000) : null;
+    const trainingCount = zeroFill(trainingInfo.count, { decimals: 0, width: 3 });
+    document.getElementById("training").textContent = trainingElapsedSeconds === null
+        ? `Training #${trainingCount} - N/A`
+        : `Training #${trainingCount} - ${formatElapsed(trainingElapsedSeconds)}`;
+    document.getElementById("position").textContent = `${zeroFill(averagedPosition, { decimals: 1 })}m`;
 }
 
 // --- OBJETS (inchangé) ---
