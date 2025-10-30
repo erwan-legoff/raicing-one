@@ -96,7 +96,7 @@ scene.add(light)
 let wheelPhysicsMaterial
 let carMesh, carBody, vehicle, wheelBodies, wheelMeshes
 let roadMesh, roadBody, leftWallMesh, rightWallMesh
-let floorLamp
+let streetLights = []
 let rays
 
 // --- INIT + RESET ---
@@ -124,9 +124,24 @@ function initLevel() {
     }))
 
     // lampadaire
-    floorLamp = createFloorLamp()
-    floorLamp.position.setX(-ROAD_WIDTH / 2)
-    scene.add(floorLamp)
+    
+    const SPACE_BETWEEN_STREET_LIGHTS = 100
+    const STREET_LIGHT_COUNT = ROAD_DEPTH / SPACE_BETWEEN_STREET_LIGHTS
+    let zStreetLight = -ROAD_DEPTH/2
+    const X_STREET_LIGHT = -ROAD_WIDTH / 2
+    for (let i = 0; i < STREET_LIGHT_COUNT; i++) {
+        const streetLight = createStreetLight()
+
+        zStreetLight += SPACE_BETWEEN_STREET_LIGHTS 
+
+        streetLight.position.setX(X_STREET_LIGHT)
+        streetLight.position.setZ(zStreetLight)
+
+        streetLights.push(streetLight)
+        scene.add(streetLight)  
+        
+    }
+    
 
     // rays
     rays = createRayCasters();
@@ -149,7 +164,7 @@ function resetLevel() {
     if (leftWallMesh) scene.remove(leftWallMesh)
     if (rightWallMesh) scene.remove(rightWallMesh)
     if (rays) Object.values(rays).forEach(r => scene.remove(r.arrowHelper))
-    if (floorLamp) scene.remove(floorLamp)
+    if (streetLights) streetLights.forEach(light => scene.remove(light))
 
     // réinitialiser références
     wheelPhysicsMaterial = undefined
@@ -157,7 +172,7 @@ function resetLevel() {
     wheelBodies = wheelMeshes = undefined
     roadMesh = roadBody = leftWallMesh = rightWallMesh = undefined
     rays = undefined
-    floorLamp = undefined
+    streetLights = []
     frameCounter = 0
 
 
@@ -396,7 +411,7 @@ function createLight() {
     return light;
 }
 
-function createFloorLamp() {
+function createStreetLight() {
     const lightColor = "rgba(255, 179, 0, 1)"
     const lightIntensity = 50
     const light = new THREE.PointLight(lightColor, lightIntensity)
@@ -436,7 +451,7 @@ function createCar() {
         shape: new CANNON.Box(halfExtents)
     })
     carBody.position.y = CAR_HEIGHT * 4
-    const x_max = (ROAD_WIDTH / 2) - (CAR_WIDTH)
+    const x_max = ((ROAD_WIDTH / 2) - (CAR_WIDTH / 2))/5
     carBody.position.x = x_max - Math.random() * x_max * 2
 
 
