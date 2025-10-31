@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import * as CANNON from 'cannon-es'
-import CannonDebugger from 'cannon-es-debugger';
+// import CannonDebugger from 'cannon-es-debugger';
 
 
 /**TODO
@@ -40,8 +40,8 @@ const AI_CONTROLS = {
     RESET: CONTROLS.RESET
 };
 let frameCounter = 0
-const MIN_FRAMES_BEFORE_START = 50
-const MIN_FRAMES_BEFORE_SIDE = 400
+// const MIN_FRAMES_BEFORE_START = 50
+// const MIN_FRAMES_BEFORE_SIDE = 400
 
 let CONTROLS_PRESSED = []
 let accelerations = { x: 0, y: 0, z: 0 }
@@ -63,7 +63,7 @@ window.addEventListener("keyup", (event) => {
 });
 
 const scene = new THREE.Scene();
-const cannonDebugger = new CannonDebugger(scene, world)
+// const cannonDebugger = new CannonDebugger(scene, world)
 
 const SEND_HZ = 8;
 let lastSend = 0
@@ -84,7 +84,7 @@ const CAM_PARAM = {
 }
 
 const camera = new THREE.PerspectiveCamera(CAM_PARAM.fieldOfView, CAM_PARAM.aspectRatio, CAM_PARAM.nearClip, CAM_PARAM.farClip)
-window.addEventListener('resize', (_) => {
+window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight
     renderer.setSize(window.innerWidth, window.innerHeight)
     camera.updateProjectionMatrix()
@@ -109,7 +109,7 @@ let roadMesh, roadBody, leftWallMesh, rightWallMesh
 let streetLights = []
 let rays
 let MIN_THEOROTICAL_Z
-let MIN_Z
+// let MIN_Z
 let MAX_Z_THEOROTICAL_LIGHT
 let MAX_Z
 let zStreetLight
@@ -188,17 +188,17 @@ function createStreetLights() {
 function computeMaxTheoroticalZ() {
     const STREET_LIGHT_COUNT = Math.min(ROAD_DEPTH / SPACE_BETWEEN_STREET_LIGHTS, MAX_STREET_LIGHTS);
     MIN_THEOROTICAL_Z = camera.position.z;
-    MIN_Z = MIN_THEOROTICAL_Z;
+    // MIN_Z = MIN_THEOROTICAL_Z;
     MAX_Z_THEOROTICAL_LIGHT = -MIN_THEOROTICAL_Z + STREET_LIGHT_COUNT * SPACE_BETWEEN_STREET_LIGHTS;
 }
 
 function resetLevel() {
     CONTROLS_PRESSED = []
     // retirer du monde physique
-    try { vehicle?.removeFromWorld?.(world) } catch { }
-    try { carBody && world.removeBody(carBody) } catch { }
-    try { roadBody && world.removeBody(roadBody) } catch { }
-    try { wheelBodies?.forEach(b => world.removeBody(b)) } catch { }
+    vehicle?.removeFromWorld?.(world)
+    carBody && world.removeBody(carBody)
+    roadBody && world.removeBody(roadBody)
+    wheelBodies?.forEach(b => world.removeBody(b))
 
     // retirer de la scène
     if (carMesh) scene.remove(carMesh)
