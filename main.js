@@ -201,7 +201,7 @@ function createStreetLightAtLocation(hasLight, X_STREET_LIGHT, zStreetLight) {
 
 function computeMaxTheoroticalZ() {
     const STREET_LIGHT_COUNT = Math.min(ROAD_DEPTH / SPACE_BETWEEN_STREET_LIGHTS, MAX_STREET_LIGHTS);
-    MIN_THEOROTICAL_Z = camera.position.z;
+    MIN_THEOROTICAL_Z = camera.position.z - 2 * SPACE_BETWEEN_STREET_LIGHTS;
     // MIN_Z = MIN_THEOROTICAL_Z;
     MAX_Z_THEOROTICAL_LIGHT = -MIN_THEOROTICAL_Z + STREET_LIGHT_COUNT * SPACE_BETWEEN_STREET_LIGHTS;
 }
