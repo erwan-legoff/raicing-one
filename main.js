@@ -152,19 +152,25 @@ function initLevel() {
 let PLAY = true;
 let shouldWait = false;
 function createStreetLights() {
-    let hasSavedMax = false
+    // let hasSavedMax = false
 
     
     computeMaxTheoroticalZ();
     MAX_Z = MAX_Z_THEOROTICAL_LIGHT;
     zStreetLight = ROAD_DEPTH / 2;
-
-    const X_STREET_LIGHT = ROAD_WIDTH / 2;
+    console.log("début zStreetLight", zStreetLight)
+    const X_STREET_LIGHT = -ROAD_WIDTH / 2 + 0.4;
     for (let i = 0; zStreetLight > -ROAD_DEPTH / 2; i++) {
-            const hasLight = -zStreetLight < MAX_Z_THEOROTICAL_LIGHT;
-            console.log("zStreetLight", -zStreetLight)
+        const hasLight = -zStreetLight < MAX_Z_THEOROTICAL_LIGHT;
+            console.log("MIN_Z", MIN_THEOROTICAL_Z)
+            console.log("zStreetLight", zStreetLight)
+            
+            const canCreateStreetLights = MIN_THEOROTICAL_Z < -zStreetLight
+            console.log("Doit on créer des lampadaires ?",canCreateStreetLights)
+            if(canCreateStreetLights){
+                
+            
             console.log("hasLight", hasLight)
-
             console.log("MAX_Z_THEOROTICAL_LIGHT",MAX_Z_THEOROTICAL_LIGHT)
             const streetLight = createStreetLightAtLocation(hasLight, X_STREET_LIGHT);
             // if(hasLight && !hasSavedMax){
@@ -179,6 +185,8 @@ function createStreetLights() {
             }
             
             scene.add(streetLight);
+            }
+            
             
         zStreetLight -= SPACE_BETWEEN_STREET_LIGHTS;
         
@@ -398,7 +406,7 @@ function updateGame() {
     // console.log("MAX_Z", MAX_Z)
     // console.log("MAX_Z_THEOROTICAL_LIGHT", MAX_Z_THEOROTICAL_LIGHT)
     if(-MAX_Z + SPACE_BETWEEN_STREET_LIGHTS < MAX_Z_THEOROTICAL_LIGHT){
-        createStreetLights()
+        // createStreetLights()
     }
     if (CONTROLS_PRESSED.includes(CONTROLS.RESET)) {
         resetLevel()
