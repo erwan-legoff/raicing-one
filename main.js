@@ -483,15 +483,18 @@ function createLight() {
     return light;
 }
 
+const lampDim = { x: 1, y: 0.3, z: 1 }
+const postDim = { x: 0.3, y: 6, z: 0.3 }
+const floorLampMaterial = new THREE.MeshPhongMaterial({ reflectivity: 1, shininess: 75, specular: "#6c6f7f" })
+const lampGeometry = new THREE.BoxGeometry(lampDim.x, lampDim.y, lampDim.z)
+
+
 function createStreetLight(hasLight= true) {
 
-    const lampDim = { x: 1, y: 0.3, z: 1 }
-    const postDim = { x: 0.3, y: 6, z: 0.3 }
+    
     
 
-    const floorLampMaterial = new THREE.MeshPhongMaterial({ reflectivity: 1, shininess: 75, specular: "#6c6f7f" })
     const floorLampGroup = new THREE.Group()
-    const lampGeometry = new THREE.BoxGeometry(lampDim.x, lampDim.y, lampDim.z)
     const lampMesh = new THREE.Mesh(lampGeometry, floorLampMaterial)
     if(hasLight){
         const lightColor = "rgba(255, 179, 0, 1)"
@@ -517,8 +520,8 @@ function advanceStreetLights(){
     const streetLightToSwitchOn = streetLightsOff.splice(0,1)[0]
     MAX_Z = streetLightToSwitchOn.position.z
     scene.remove(streetLightToSwitchOn)
-    const streetLightOn = createStreetLightAtLocation(true,streetLightToSwitchOn.position.x,streetLightToSwitchOn.position.z)
-    scene.add(streetLightOn)
+    streetLightsOn[0].position.z = streetLightToSwitchOn.position.z
+    const streetLightOn = streetLightsOn.splice(0,1)[0]
     streetLightsOn.push(streetLightOn)
     
 
