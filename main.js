@@ -172,11 +172,8 @@ function createStreetLights() {
             
             console.log("hasLight", hasLight)
             console.log("MAX_Z_THEOROTICAL_LIGHT",MAX_Z_THEOROTICAL_LIGHT)
-            const streetLight = createStreetLightAtLocation(hasLight, X_STREET_LIGHT);
-            // if(hasLight && !hasSavedMax){
-            //    MAX_Z = zStreetLight
-            //    hasSavedMax = true 
-            // }
+            const streetLight = createStreetLightAtLocation(hasLight, X_STREET_LIGHT, zStreetLight);
+
             if(hasLight){
                 streetLightsOn.push(streetLight)
                 MAX_Z = zStreetLight
@@ -193,7 +190,7 @@ function createStreetLights() {
     }
 }
 
-function createStreetLightAtLocation(hasLight, X_STREET_LIGHT) {
+function createStreetLightAtLocation(hasLight, X_STREET_LIGHT, zStreetLight) {
     const streetLight = createStreetLight(hasLight);
 
 
@@ -406,8 +403,8 @@ function updateGame() {
     // console.log("MAX_Z", MAX_Z)
     // console.log("MAX_Z_THEOROTICAL_LIGHT", MAX_Z_THEOROTICAL_LIGHT)
     if(-MAX_Z + SPACE_BETWEEN_STREET_LIGHTS < MAX_Z_THEOROTICAL_LIGHT){
-        // createStreetLights()
-    }
+        advanceStreetLights()
+        }
     if (CONTROLS_PRESSED.includes(CONTROLS.RESET)) {
         resetLevel()
     }
@@ -514,6 +511,17 @@ function createStreetLight(hasLight= true) {
     lampPostMesh.add(lampMesh)
     floorLampGroup.add(lampPostMesh)
     return floorLampGroup
+}
+
+function advanceStreetLights(){
+    const streetLightToSwitchOn = streetLightsOff.splice(0,1)[0]
+    MAX_Z = streetLightToSwitchOn.position.z
+    scene.remove(streetLightToSwitchOn)
+    const streetLightOn = createStreetLightAtLocation(true,streetLightToSwitchOn.position.x,streetLightToSwitchOn.position.z)
+    scene.add(streetLightOn)
+    streetLightsOn.push(streetLightOn)
+    
+
 }
 
 function createCar() {
