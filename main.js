@@ -106,7 +106,8 @@ scene.add(light)
 let wheelPhysicsMaterial
 let carMesh, carBody, vehicle, wheelBodies, wheelMeshes
 let roadMesh, roadBody, leftWallMesh, rightWallMesh
-let streetLights = []
+let streetLightsOff= []
+let streetLightsOn = []
 let rays
 let MIN_THEOROTICAL_Z
 // let MIN_Z
@@ -156,33 +157,41 @@ function createStreetLights() {
     
     computeMaxTheoroticalZ();
     MAX_Z = MAX_Z_THEOROTICAL_LIGHT;
-    zStreetLight = -ROAD_DEPTH / 2;
+    zStreetLight = ROAD_DEPTH / 2;
 
-    const X_STREET_LIGHT = -ROAD_WIDTH / 2;
-    for (let i = 0; -zStreetLight > -ROAD_DEPTH / 2; i++) {
-        if (zStreetLight < MIN_THEOROTICAL_Z) {
-            
-            
+    const X_STREET_LIGHT = ROAD_WIDTH / 2;
+    for (let i = 0; zStreetLight > -ROAD_DEPTH / 2; i++) {
             const hasLight = -zStreetLight < MAX_Z_THEOROTICAL_LIGHT;
-            // console.log("zStreetLight", zStreetLight)
-            // console.log("MAX_Z_THEOROTICAL_LIGHT",MAX_Z_THEOROTICAL_LIGHT)
-            const streetLight = createStreetLight(hasLight);
+            console.log("zStreetLight", -zStreetLight)
+            console.log("hasLight", hasLight)
 
-
-            streetLight.position.setX(X_STREET_LIGHT);
-            streetLight.position.setZ(zStreetLight);
-            if(hasLight && !hasSavedMax){
-               MAX_Z = zStreetLight
-               hasSavedMax = true 
+            console.log("MAX_Z_THEOROTICAL_LIGHT",MAX_Z_THEOROTICAL_LIGHT)
+            const streetLight = createStreetLightAtLocation(hasLight, X_STREET_LIGHT);
+            // if(hasLight && !hasSavedMax){
+            //    MAX_Z = zStreetLight
+            //    hasSavedMax = true 
+            // }
+            if(hasLight){
+                streetLightsOn.push(streetLight)
+                MAX_Z = zStreetLight
+            }else {
+                streetLightsOff.push(streetLight)
             }
-
-            streetLights.push(streetLight);
+            
             scene.add(streetLight);
             
-        }
-        zStreetLight += SPACE_BETWEEN_STREET_LIGHTS;
+        zStreetLight -= SPACE_BETWEEN_STREET_LIGHTS;
         
     }
+}
+
+function createStreetLightAtLocation(hasLight, X_STREET_LIGHT) {
+    const streetLight = createStreetLight(hasLight);
+
+
+    streetLight.position.setX(X_STREET_LIGHT);
+    streetLight.position.setZ(zStreetLight);
+    return streetLight;
 }
 
 function computeMaxTheoroticalZ() {
@@ -207,7 +216,7 @@ function resetLevel() {
     if (leftWallMesh) scene.remove(leftWallMesh)
     if (rightWallMesh) scene.remove(rightWallMesh)
     if (rays) Object.values(rays).forEach(r => scene.remove(r.arrowHelper))
-    if (streetLights) streetLights.forEach(light => scene.remove(light))
+    if (streetLightsOff) streetLightsOff.forEach(light => scene.remove(light))
 
     // réinitialiser références
     wheelPhysicsMaterial = undefined
@@ -215,7 +224,9 @@ function resetLevel() {
     wheelBodies = wheelMeshes = undefined
     roadMesh = roadBody = leftWallMesh = rightWallMesh = undefined
     rays = undefined
-    streetLights = []
+    streetLightsOff = []
+    streetLightsOn = []
+
     frameCounter = 0
 
 
@@ -384,8 +395,8 @@ function updateGame() {
     const STEERING_ANGLE = Math.PI / 17;
     updateHUD();
     computeMaxTheoroticalZ()
-    console.log("MAX_Z", MAX_Z)
-    console.log("MAX_Z_THEOROTICAL_LIGHT", MAX_Z_THEOROTICAL_LIGHT)
+    // console.log("MAX_Z", MAX_Z)
+    // console.log("MAX_Z_THEOROTICAL_LIGHT", MAX_Z_THEOROTICAL_LIGHT)
     if(-MAX_Z + SPACE_BETWEEN_STREET_LIGHTS < MAX_Z_THEOROTICAL_LIGHT){
         createStreetLights()
     }
