@@ -16,7 +16,11 @@ const world = new CANNON.World({
     gravity: new CANNON.Vec3(0, -9.80665, 0)
 })
 
-const socket = new WebSocket("ws://localhost:8000/ai");
+const clientId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+const socket = new WebSocket(`ws://localhost:8000/ai?id=${encodeURIComponent(clientId)}`);
 socket.onopen = () => { console.log("Connecté !"); shouldWait = true };
 socket.onclose = () => { console.log("Connexion fermée"); shouldWait = false };
 let reward = 0;
