@@ -24,6 +24,7 @@ const socket = new WebSocket(`ws://localhost:8000/ai?id=${encodeURIComponent(cli
 socket.onopen = () => { console.log("Connecté !"); shouldWait = true };
 socket.onclose = () => { console.log("Connexion fermée"); shouldWait = false };
 let reward = 0;
+let lastTags = [];
 const trainingInfo = {
     count: 0,
     lastTimestamp: null
@@ -50,6 +51,7 @@ let frameCounter = 0
 let CONTROLS_PRESSED = []
 let accelerations = { x: 0, y: 0, z: 0 }
 const HUD_SAMPLE_SIZE = 3;
+const ACCELERATION_SAMPLE_SIZE = 16;
 const hudSamples = {
     reward: [],
     speed: [],
@@ -252,6 +254,11 @@ socket.onmessage = (event) => {
     if (data && data.reward !== undefined) {
         reward = data.reward;
     }
+    if (Object.prototype.hasOwnProperty.call(data ?? {}, 'tags')) {
+        lastTags = Array.isArray(data.tags) ? data.tags : [];
+    } else if (Array.isArray(data?.driving_inputs) && data.driving_inputs.includes("RESET")) {
+        lastTags = [];
+    }
     if (data && data.training) {
         const { count, last } = data.training;
         if (typeof count === 'number') trainingInfo.count = count;
@@ -446,17 +453,27 @@ function updateHUD() {
     document.getElementById("controls").textContent = displayedControls;
     const averagedReward = pushHudSample('reward', reward);
     const averagedSpeed = pushHudSample('speed', -carBody.velocity.z);
-    const averagedAcceleration = pushHudSample('acceleration', -accelerations.z);
+    const averagedAcceleration = pushHudSample('acceleration', -accelerations.z, ACCELERATION_SAMPLE_SIZE);
     const averagedPosition = pushHudSample('position', -carMesh.position.z);
-    document.getElementById("reward").textContent = zeroFill(averagedReward, { decimals: 0, width: 3 });
-    document.getElementById("speed").textContent = `${zeroFill(averagedSpeed, { decimals: 2 })}m/s`;
-    document.getElementById("acceleration").textContent = `${zeroFill(averagedAcceleration, { decimals: 2 })}m/s`;
+    const rewardElement = document.getElementById("reward");
+    rewardElement.textContent = `Reward: ${zeroFill(averagedReward, { decimals: 0, width: 3 })}`;
+    rewardElement.style.color = rewardToColor(averagedReward);
+    const tagsElement = document.getElementById("tags");
+    if (tagsElement) {
+        tagsElement.innerHTML = formatTags(lastTags);
+    }
+    const metricsElement = document.getElementById("metrics");
+    if (metricsElement) {
+        const speedText = `${zeroFill(averagedSpeed, { decimals: 1 })} m/s`;
+        const distanceText = `${zeroFill(averagedPosition, { decimals: 0 })} m`;
+        const accelerationText = `${zeroFill(averagedAcceleration, { decimals: 2 })} m/s^2`;
+        metricsElement.textContent = `${speedText} / ${distanceText} / ${accelerationText}`;
+    }
     const trainingElapsedSeconds = trainingInfo.lastTimestamp ? Math.max(0, (Date.now() - trainingInfo.lastTimestamp) / 1000) : null;
     const trainingCount = zeroFill(trainingInfo.count, { decimals: 0, width: 3 });
     document.getElementById("training").textContent = trainingElapsedSeconds === null
         ? `Training #${trainingCount} - N/A`
         : `Training #${trainingCount} - ${formatElapsed(trainingElapsedSeconds)}`;
-    document.getElementById("position").textContent = `${zeroFill(averagedPosition, { decimals: 1 })}m`;
 }
 
 // --- OBJETS (inchangé) ---
@@ -632,12 +649,13 @@ function zeroFill(value, { decimals = 2, width = 0 } = {}) {
     return formatted.padStart(Math.max(width, formatted.length), '0');
 }
 
-function pushHudSample(key, value) {
+function pushHudSample(key, value, windowSize = HUD_SAMPLE_SIZE) {
     const samples = hudSamples[key];
     if (!samples) return value ?? 0;
     const numericValue = Number.isFinite(value) ? value : 0;
     samples.push(numericValue);
-    if (samples.length > HUD_SAMPLE_SIZE) samples.shift();
+    const maxSamples = Math.max(1, windowSize);
+    if (samples.length > maxSamples) samples.splice(0, samples.length - maxSamples);
     const sum = samples.reduce((total, sample) => total + sample, 0);
     return sum / samples.length;
 }
@@ -651,4 +669,55 @@ function formatElapsed(seconds) {
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
     return `${hours}h ${remainingMinutes}m ago`;
+}
+
+const REWARD_COLOR_STOPS = [
+    { value: -200, color: [176, 0, 255] },   // rouge violet
+    { value: -100, color: [255, 23, 68] },   // rouge
+    { value: -50, color: [255, 145, 0] },    // orange
+    { value: 0, color: [255, 214, 0] },      // jaune
+    { value: 50, color: [76, 175, 80] },     // vert
+    { value: 100, color: [57, 255, 20] },    // vert pétard
+    { value: 200, color: [0, 255, 208] },    // vert bleu
+];
+
+function rewardToColor(value) {
+    if (!Number.isFinite(value)) return '#ffffff';
+    const stops = REWARD_COLOR_STOPS;
+    if (value <= stops[0].value) return rgbArrayToHex(stops[0].color);
+    if (value >= stops[stops.length - 1].value) return rgbArrayToHex(stops[stops.length - 1].color);
+    for (let i = 0; i < stops.length - 1; i++) {
+        const current = stops[i];
+        const next = stops[i + 1];
+        if (value >= current.value && value <= next.value) {
+            const span = next.value - current.value || 1;
+            const ratio = (value - current.value) / span;
+            const interpolated = current.color.map((component, index) =>
+                Math.round(component + (next.color[index] - component) * ratio)
+            );
+            return rgbArrayToHex(interpolated);
+        }
+    }
+    return rgbArrayToHex(stops[stops.length - 1].color);
+}
+
+function rgbArrayToHex(rgb) {
+    return `#${rgb.map((component) => {
+        const clamped = Math.max(0, Math.min(255, Math.round(component)));
+        return clamped.toString(16).padStart(2, '0');
+    }).join('')}`;
+}
+
+function formatTags(tags) {
+    if (!tags || !tags.length) return 'Tags: —';
+    return `Tags: ${tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}`;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
